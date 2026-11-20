@@ -24,6 +24,7 @@ export default function Workspace({ initial }: { initial: State }) {
     [dialog, D] = useState(""),
     [ready, R] = useState(true);
   const [missing, setMissing] = useState(false);
+  const profileDialog = useRef<HTMLDialogElement>(null);
   const pendingKey = "nyaris:payment:" + state.user.id;
   const [pending, setPending] = useState(null);
   const etag = useRef(""),
@@ -333,14 +334,25 @@ export default function Workspace({ initial }: { initial: State }) {
             </button>
           ))}
         </nav>
-        <div className="profile">
-          <b>{state.user.name.slice(0, 2).toUpperCase()}</b>
-          <div>
-            {state.user.name}
-            <small>{state.user.role}</small>
-          </div>
-        </div>
+        <button
+          className="profile profile-trigger"
+          aria-label={`Buka profil ${state.user.name}`}
+          aria-haspopup="dialog"
+          onClick={() => profileDialog.current?.showModal()}
+        >
+          <b aria-hidden="true">{state.user.name.slice(0, 2).toUpperCase()}</b>
+          <span>{state.user.name}<small>Profil</small></span>
+        </button>
       </aside>
+      <dialog ref={profileDialog} aria-labelledby="profile-title" className="account-dialog">
+        <div className="account-heading">
+          <h2 id="profile-title">Profil</h2>
+          <button autoFocus aria-label="Tutup profil" onClick={() => profileDialog.current?.close()}>×</button>
+        </div>
+        <p>{state.user.name}<small>{state.user.role}</small></p>
+        <PasswordChange />
+        <button onClick={() => { profileDialog.current?.close(); void logout(); }}>Keluar</button>
+      </dialog>
       <main>
         <header>
           <span>
@@ -349,8 +361,7 @@ export default function Workspace({ initial }: { initial: State }) {
           <span className="online">
             <em /> {event?.active ? "Event aktif" : "Event nonaktif"}
           </span>
-          <PasswordChange />
-          <button onClick={logout}>Keluar</button>
+
         </header>
         <div
           className={

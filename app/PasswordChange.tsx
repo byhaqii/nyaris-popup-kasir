@@ -14,7 +14,7 @@ export default function PasswordChange() {
           dialog.current.showModal();
         }}
       >
-        Kata sandi
+        Ganti kata sandi
       </button>
       <dialog
         ref={dialog}
