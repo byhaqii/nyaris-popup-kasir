@@ -62,28 +62,9 @@ export function Management({ s, run, busy }: Props) {
     <Form
       title={title}
       busy={busy}
-      submit={(p) =>
-        run({
-          ...p,
-          action: event ? "schedule" : "event",
-          start: p.start + ":00+07:00",
-          finish: p.finish + ":00+07:00",
-        })
-      }
+      submit={(p) => run({ ...p, action: event ? "rename" : "event" })}
     >
       <Field label="Nama event" name="name" value={event?.name} />
-      <Field
-        label="Mulai (WIB)"
-        name="start"
-        type="datetime-local"
-        value={wib(event?.start)}
-      />
-      <Field
-        label="Selesai (WIB)"
-        name="finish"
-        type="datetime-local"
-        value={wib(event?.finish)}
-      />
       {!event && (
         <label>
           Tenant (opsional)
@@ -98,11 +79,14 @@ export function Management({ s, run, busy }: Props) {
     </Form>
   );
   return (
-    <section className="panel stack settings-list">
+    <section className="management-groups">
+      <div className="panel stack settings-list">
       <details open={!e}>
         <summary>Buat event</summary>
         {setup("Event baru", null)}
       </details>
+      </div>
+      <div className="panel stack settings-list">
       <details>
         <summary>Akun kasir</summary>
         <Form
@@ -161,26 +145,18 @@ export function Management({ s, run, busy }: Props) {
           </details>
         ))}
       </details>
+      </div>
       {e && (
-        <>
+        <div className="panel stack settings-list">
           <details>
-            <summary>Jadwal dan status event</summary>
-            {setup("Ubah jadwal", e)}
+            <summary>Pengaturan event</summary>
+            {setup("Ubah nama event", e)}
             <hr />
-            <Form
-              title="Mode event"
-              busy={busy}
-              submit={(p) => run({ ...p, action: "mode" })}
-            >
-              <label>
-                Status
-                <select name="mode" defaultValue={e.mode}>
-                  <option value="auto">Otomatis sesuai jadwal</option>
-                  <option value="on">Aktif manual</option>
-                  <option value="off">Nonaktif manual</option>
-                </select>
-              </label>
-            </Form>
+            {e.current && (
+              <button disabled={busy} onClick={() => run({ action: "mode", mode: e.active ? "off" : "on" })}>
+                {e.active ? "Akhiri event" : "Aktifkan event"}
+              </button>
+            )}
             {!e.current && (
               <button
                 disabled={busy}
@@ -335,7 +311,7 @@ export function Management({ s, run, busy }: Props) {
               </Form>
             ))}
           </details>
-        </>
+        </div>
       )}
     </section>
   );
@@ -352,7 +328,7 @@ export function History({ s, run, busy }: Props) {
   );
   return (
     <section className="panel stack">
-      <div className="actions">
+      <div className="transaction-filters">
         {Object.entries({
           tenant: s.tenants.map((t) => t.name),
           cashier: [...new Set(s.sessions.map((v) => v.cashier))],

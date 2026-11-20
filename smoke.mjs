@@ -66,13 +66,9 @@ try {
   assert.match(await home.text(), /Meja kasir/);
   for (const name of ["anna", "budi"])
     await act("owner", "account", { name, password: pwd });
-  const future = new Date(Date.now() + 86400000).toISOString(),
-    finish = new Date(Date.now() + 2 * 86400000).toISOString();
   let state = await act("owner", "event", {
     name: "Acceptance",
     tenantNames: " Tenant A \nTenant B\n tenant a\n",
-    start: future,
-    finish,
   });
   assert.deepEqual(
     state.tenants.map((t) => t.name),
@@ -277,17 +273,16 @@ try {
     400,
   );
   assert.equal(day("2026-11-20T17:00:00Z"), "2026-11-21");
-  await act("owner", "schedule", {
-    name: "Acceptance",
-    start: new Date(Date.now() - 1000).toISOString(),
-    finish,
-  });
-  state = await act("owner", "mode", { mode: "auto" });
+  await act("owner", "rename", {name: "Acceptance"});
+  await act("owner", "mode", { mode: "auto" }, 400);
+  state = await act("owner", "mode", { mode: "on" });
   assert.equal(state.event.active, true);
+  await act("owner", "start");
+  state = await act("owner", "mode", { mode: "off" });
+  assert.equal(state.event.active, false);
+  assert(state.sessions.every(session => session.end));
   const otherEvent = await act("owner", "event", {
     name: "Other",
-    start: future,
-    finish,
   });
   await act(other, "start", { eid: otherEvent.event.id }, 403);
   const token = users[other];
@@ -330,7 +325,7 @@ try {
   });
   db.close();
   console.log(
-    "PASS: protected HTTP routes, roles, assignment, schedule, concurrent sessions, payments, retries, corrections, reports, logout, persistent sync retry and SQLite integrity.",
+    "PASS: protected HTTP routes, roles, assignment, manual event controls, concurrent sessions, payments, retries, corrections, reports, logout, persistent sync retry and SQLite integrity.",
   );
 } finally {
   const exited = once(server, "exit");

@@ -365,23 +365,12 @@ export default function Workspace({ initial }: { initial: State }) {
           {tab !== "Kelola" && (
             <div className="event">
               <div>
-                <div className="eyebrow">JADWAL EVENT</div>
+                <div className="eyebrow">EVENT</div>
                 <h1>
                   {event?.name || "Belum ada event"}
                   <span>.</span>
                 </h1>
-                <div className="meta">
-                  {event
-                    ? new Date(event.start).toLocaleString("id-ID", {
-                        timeZone: "Asia/Jakarta",
-                      }) +
-                      " – " +
-                      new Date(event.finish).toLocaleString("id-ID", {
-                        timeZone: "Asia/Jakarta",
-                      }) +
-                      " WIB"
-                    : "Workspace internal"}
-                </div>
+
               </div>
               <div className="poster" aria-hidden="true">
                 <span>✳</span>
@@ -444,22 +433,6 @@ export default function Workspace({ initial }: { initial: State }) {
                   : "Menghubungkan…"}
               </span>
             </div>
-          )}
-          {tab === "Kelola" && event && (
-            <p className="settings-date">
-              {new Intl.DateTimeFormat("id-ID", {
-                day: "numeric",
-                month: "short",
-                year: "numeric",
-                hour: "2-digit",
-                minute: "2-digit",
-                timeZone: "Asia/Jakarta",
-              }).formatRange(
-                new Date(event.start),
-                new Date(event.finish),
-              )}{" "}
-              WIB
-            </p>
           )}
           {tab === "Kasir" && gate && !pending && (
             <section className="panel gate">
