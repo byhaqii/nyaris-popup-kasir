@@ -1,6 +1,7 @@
-import { open, atomic, hash, username } from "../lib/store.mjs";
+import { openShared } from "../lib/shared.mjs";
+import { atomic, hash, username } from "../lib/store.mjs";
 import { randomBytes } from "node:crypto";
-const db = open(),
+const { db, finish } = await openShared(true),
   name = username(process.argv[2] || "owner");
 try {
   atomic(db, () => {
@@ -17,5 +18,5 @@ try {
       console.log("Initial password:", password);
   });
 } finally {
-  db.close();
+  await finish();
 }

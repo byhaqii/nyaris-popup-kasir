@@ -1,6 +1,6 @@
+import { openShared } from "../../../lib/shared.mjs";
 import { NextRequest, NextResponse } from "next/server";
 import {
-  open,
   atomic,
   check,
   user,
@@ -13,7 +13,7 @@ import { snapshot, mutate, scope } from "../../../lib/pos.mjs";
 import { body, failure } from "../../../lib/http";
 export const dynamic = "force-dynamic";
 async function handle(req: NextRequest, write: boolean) {
-  const db = open();
+  const { db, finish } = await openShared(write);
   try {
     const p = write ? await body(req) : null;
     return atomic(
@@ -74,7 +74,7 @@ async function handle(req: NextRequest, write: boolean) {
   } catch (e) {
     return failure(e);
   } finally {
-    db.close();
+    await finish();
   }
 }
 export const GET = (req: NextRequest) => handle(req, false);

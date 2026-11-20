@@ -1,7 +1,7 @@
+import { openShared } from "../../../lib/shared.mjs";
 import { NextRequest, NextResponse } from "next/server";
 import { randomBytes } from "node:crypto";
 import {
-  open,
   atomic,
   check,
   digest,
@@ -12,7 +12,7 @@ import {
 import { body, failure } from "../../../lib/http";
 const dummy = hash(randomBytes(24).toString("hex"));
 export async function POST(req: NextRequest) {
-  const db = open();
+  const { db, finish } = await openShared(true);
   try {
     const p = await body(req);
     const options = {
@@ -87,6 +87,6 @@ export async function POST(req: NextRequest) {
   } catch (e) {
     return failure(e);
   } finally {
-    db.close();
+    await finish();
   }
 }

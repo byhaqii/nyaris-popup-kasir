@@ -1,0 +1,10 @@
+BEGIN;
+CREATE SCHEMA IF NOT EXISTS nyaris;
+REVOKE ALL ON SCHEMA nyaris FROM PUBLIC;
+CREATE TABLE IF NOT EXISTS nyaris.store (
+  id integer PRIMARY KEY CHECK (id = 1),
+  image bytea
+);
+REVOKE ALL ON nyaris.store FROM PUBLIC;
+INSERT INTO nyaris.store(id) VALUES (1) ON CONFLICT DO NOTHING;
+COMMIT;
