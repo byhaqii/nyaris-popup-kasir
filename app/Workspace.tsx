@@ -318,7 +318,13 @@ export default function Workspace({ initial }: { initial: State }) {
                 : "content"
           }
         >
-          <div className="workspace-title"><h1>{tab === "Kasir" ? "Meja kasir" : tab === accountsTab ? "Manajemen akun" : tab}</h1><span className="online" data-active={Boolean(event?.active)}>
+          <div className="workspace-title">
+            <nav className="workspace-crumb" aria-label="Breadcrumb">
+              <a href="#Kasir">Nyaris Popup</a>
+              <span aria-hidden="true">/</span>
+              <h1 aria-current="page">{tab === "Kasir" ? "Meja kasir" : tab === accountsTab ? "Manajemen akun" : tab}</h1>
+            </nav>
+            <span className="online" data-active={Boolean(event?.active)}>
             <em /> {!event ? "Belum ada event" : event.active ? "Event aktif" : "Event nonaktif"}
           </span></div>
           {tab !== accountsTab && state.events.length > 0 && (

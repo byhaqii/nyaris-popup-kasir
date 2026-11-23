@@ -954,7 +954,8 @@ button:active:not(:disabled) {
 }
 .account-dialog .editor { margin-top: 14px; }
 
-.settings-content{max-width:920px;margin-inline:auto;padding-block:36px}
+.settings-content { padding-block:26px; }
+.settings-content .editor { width:100%; max-width:none; min-width:0; }
 .settings-content>h1{font-size:28px;line-height:1.25;letter-spacing:-.8px;margin:0 0 20px}
 .settings-content .eventpick{margin:0;gap:12px;font-size:14px}
 .eventpick select{-webkit-appearance:none;appearance:none;box-sizing:border-box;height:44px;min-height:44px;width:clamp(200px,30vw,340px);color:inherit;border:1px solid #484c44;cursor:pointer;padding:0 34px 0 12px;background:#272a27 url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 16 16'%3E%3Cpath d='m3 6 5 5 5-5' stroke='%23c7cec3' stroke-width='1.6' fill='none'/%3E%3C/svg%3E") right 12px center/14px no-repeat;font-size:14px;border-radius:8px}
@@ -1072,7 +1073,7 @@ button:active:not(:disabled) {
 .role-field input:focus-visible + span { outline:2px solid #ddf58d; }
 .account-dialog { box-sizing:border-box; width:min(360px,calc(100vw - 32px)); padding:20px; }
 .account-heading h2 { font-size:20px; letter-spacing:-.02em; }
-.account-heading button { background:transparent; border:0; }
+.account-dialog .account-heading button { background:transparent; border:0; }
 .profile-identity { display:flex; align-items:center; gap:12px; margin:14px 0 18px; padding-bottom:18px; border-bottom:1px solid #454a42; }
 .profile-identity b { display:grid; place-items:center; flex:none; width:44px; height:44px; border-radius:50%; background:#dac8f1; color:#342e39; }
 .profile-identity strong { font-size:18px; overflow-wrap:anywhere; }
@@ -1142,3 +1143,19 @@ meter { accent-color:#daf177; max-width:24%; }
   .float-indicator { position:absolute; inset:0; border-radius:28px; pointer-events:none; background:#394229; }
   .cashier-content .summary { bottom:calc(68px + env(safe-area-inset-bottom)); }
 }
+
+.shell .workspace-crumb {
+  display:flex; align-items:baseline; flex-wrap:wrap; gap:8px;
+  margin:0; padding:0; min-width:0;
+}
+.workspace-crumb a { color:#c0c4bb; font-size:14px; text-decoration:none; }
+.workspace-crumb a:hover { text-decoration:underline; }
+.workspace-crumb > span { color:#838a7f; }
+.workspace-title { padding-bottom:14px; border-bottom:1px solid rgb(244 243 233 / 12%); }
+.account-management .account-heading {
+  gap:12px; flex-wrap:wrap; padding-bottom:12px;
+  border-bottom:1px solid rgb(244 243 233 / 12%);
+}
+.account-management .report td:last-child,
+.account-management .report thead th:last-child { text-align:right; }
+.account-management .report tbody tr + tr { border-top:1px solid rgb(244 243 233 / 12%); }
