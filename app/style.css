@@ -1027,3 +1027,9 @@ button:active:not(:disabled) {
   .profile-trigger span { display: none; }
   .profile-trigger b { display: grid; place-items: center; width: 36px; height: 36px; padding: 0; }
 }
+
+.account-nav-short { display: none; }
+@media (max-width: 780px) {
+  .account-nav-full { display: none; }
+  .account-nav-short { display: inline; }
+}

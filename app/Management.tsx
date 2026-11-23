@@ -86,66 +86,6 @@ export function Management({ s, run, busy }: Props) {
         {setup("Event baru", null)}
       </details>
       </div>
-      <div className="panel stack settings-list">
-      <details>
-        <summary>Akun kasir</summary>
-        <Form
-          title="Tambah kasir"
-          busy={busy}
-          submit={(p) => run({ ...p, action: "account" })}
-        >
-          <Field label="Username" name="name" />
-          <Field
-            label="Kata sandi awal (minimal 12 karakter)"
-            name="password"
-            type="password"
-            minLength={12}
-            autoComplete="new-password"
-          />
-        </Form>
-        {admin.users.map((u) => (
-          <details key={u.id}>
-            <summary>
-              {u.name} · {u.enabled ? "Aktif" : "Nonaktif"}
-            </summary>
-            <Form
-              title="Pengaturan akun"
-              busy={busy}
-              submit={(p) =>
-                run({
-                  ...p,
-                  uid: u.id,
-                  action: "staff",
-                  enabled: p.enabled === "1",
-                })
-              }
-            >
-              <label>
-                Status
-                <select name="enabled" defaultValue={u.enabled}>
-                  <option value="1">Aktif</option>
-                  <option value="0">Nonaktif</option>
-                </select>
-              </label>
-              <Field
-                label="Email Google untuk akses laporan operasional"
-                name="email"
-                value={u.email}
-                type="email"
-                required={false}
-              />
-              <Field
-                label="Kata sandi baru (opsional)"
-                name="password"
-                type="password"
-                minLength={12}
-                required={false}
-              />
-            </Form>
-          </details>
-        ))}
-      </details>
-      </div>
       {e && (
         <div className="panel stack settings-list">
           <details>
@@ -202,7 +142,7 @@ export function Management({ s, run, busy }: Props) {
               </p>
             )}
             <h3>Kasir event</h3>
-            {admin.users.map((u) => (
+            {admin.users.filter((u) => u.role === "cashier").map((u) => (
               <article key={u.id}>
                 {u.name}
                 <button
@@ -527,6 +467,76 @@ export function Reports({ s }: { s: State }) {
           )}
         </p>
       ))}
+    </section>
+  );
+}
+
+export function AccountManagement({ s, run, busy }: Props) {
+  const admin = s.admin;
+  if (!admin) return null;
+  return (
+    <section className="panel stack account-management">
+        <Form
+          title="Buat akun"
+          busy={busy}
+          submit={(p) => run({ ...p, action: "account" })}
+        >
+          <Field label="Username" name="name" />
+          <label>Role
+            <select name="role" defaultValue="cashier">
+              <option value="cashier">Kasir</option>
+              <option value="developer">Developer</option>
+            </select>
+          </label>
+          <Field
+            label="Kata sandi awal (minimal 12 karakter)"
+            name="password"
+            type="password"
+            minLength={12}
+            autoComplete="new-password"
+          />
+        </Form>
+        {admin.users.map((u) => (
+          <details key={u.id}>
+            <summary>
+              {u.name} · {u.role === "developer" ? "Developer" : "Kasir"} · {u.enabled ? "Aktif" : "Nonaktif"}
+            </summary>
+            <Form
+              title="Pengaturan akun"
+              busy={busy}
+              submit={(p) =>
+                run({
+                  ...p,
+                  uid: u.id,
+                  action: "staff",
+                  enabled: p.enabled === "1",
+                })
+              }
+            >
+              <label>
+                Status
+                <select name="enabled" defaultValue={u.enabled}>
+                  <option value="1">Aktif</option>
+                  <option value="0" disabled={u.id === s.user.id}>Nonaktif</option>
+                </select>
+              </label>
+              <Field
+                label="Email Google untuk akses laporan operasional"
+                name="email"
+                value={u.email}
+                type="email"
+                required={false}
+              />
+              <Field
+                label="Kata sandi baru (opsional)"
+                name="password"
+                type="password"
+                minLength={12}
+                required={false}
+              />
+            </Form>
+          </details>
+        ))}
     </section>
   );
 }

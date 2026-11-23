@@ -66,7 +66,12 @@ try {
   assert.match(await home.text(), /Meja kasir/);
   for (const name of ["anna", "budi"])
     await act("owner", "account", { name, password: pwd });
-  let state = await act("owner", "event", {
+  await act("owner", "account", { name: "invalid", role: "admin", password: pwd }, 400);
+  await act("owner", "account", { name: "rekan", role: "developer", password: pwd });
+  await login("rekan");
+  await login("anna");
+  await act("anna", "account", { name: "forbidden", role: "developer", password: pwd }, 403);
+  let state = await act("rekan", "event", {
     name: "Acceptance",
     tenantNames: " Tenant A \nTenant B\n tenant a\n",
   });
@@ -75,7 +80,7 @@ try {
     ["Tenant A", "Tenant B"],
   );
   eid = state.event.id;
-  for (const u of state.admin.users)
+  for (const u of state.admin.users.filter(u => u.role === "cashier"))
     await act("owner", "assign", { uid: u.id, enabled: true });
   await act("owner", "tenant", { name: "Tenant A", enabled: true });
   state = await act("owner", "tenant", { name: "tenant a", enabled: true });

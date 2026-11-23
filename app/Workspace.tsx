@@ -3,9 +3,11 @@ import { useEffect, useRef, useState } from "react";
 import { pendingPayment, receiptMessage } from "../lib/payment.mjs";
 import PasswordChange from "./PasswordChange";
 import { Icon } from "./art";
-import { Management, History, Reports } from "./Management";
+import { AccountManagement, Management, History, Reports } from "./Management";
 import { rupiah, type State } from "./model";
 const tabs = ["Kasir", "Transaksi", "Ringkasan", "Sesi"];
+const accountsTab = "Account Management";
+const developerTabs = [...tabs, "Kelola", accountsTab];
 const clock = (s: string) =>
   new Date(s).toLocaleTimeString("id-ID", {
     hour: "2-digit",
@@ -276,7 +278,7 @@ export default function Workspace({ initial }: { initial: State }) {
     const apply = () => {
       const view = decodeURIComponent(location.hash.slice(1));
       T(
-        (isDeveloper ? [...tabs, "Kelola"] : tabs).includes(view)
+        (isDeveloper ? developerTabs : tabs).includes(view)
           ? view
           : "Kasir",
       );
@@ -322,7 +324,7 @@ export default function Workspace({ initial }: { initial: State }) {
         </div>
         <div className="navlabel">WORKSPACE</div>
         <nav>
-          {(state.admin ? [...tabs, "Kelola"] : tabs).map((t) => (
+          {(state.admin ? developerTabs : tabs).map((t) => (
             <button
               key={t}
               className={tab === t ? "on" : ""}
@@ -330,7 +332,7 @@ export default function Workspace({ initial }: { initial: State }) {
               onClick={() => nav(t)}
             >
               <Icon name={t} />
-              {t === "Sesi" ? "Sesi Kasir" : t}
+              {t === accountsTab ? <><span className="account-nav-full">Account Management</span><span className="account-nav-short">Akun</span></> : t === "Sesi" ? "Sesi Kasir" : t}
             </button>
           ))}
         </nav>
@@ -372,8 +374,8 @@ export default function Workspace({ initial }: { initial: State }) {
                 : "content"
           }
         >
-          {tab === "Kelola" && <h1>Kelola</h1>}
-          {tab !== "Kelola" && (
+          {(tab === "Kelola" || tab === accountsTab) && <h1>{tab}</h1>}
+          {tab !== "Kelola" && tab !== accountsTab && (
             <div className="event">
               <div>
                 <div className="eyebrow">EVENT</div>
@@ -393,7 +395,7 @@ export default function Workspace({ initial }: { initial: State }) {
               </div>
             </div>
           )}
-          {state.events.length > 0 && (
+          {tab !== accountsTab && state.events.length > 0 && (
             <label className="eventpick">
               Event{" "}
               <select
@@ -427,7 +429,7 @@ export default function Workspace({ initial }: { initial: State }) {
               </select>
             </label>
           )}
-          {tab !== "Kelola" && (
+          {tab !== "Kelola" && tab !== accountsTab && (
             <div className="pageTitle">
               <h2>
                 {tab === "Kasir"
@@ -603,6 +605,8 @@ export default function Workspace({ initial }: { initial: State }) {
             />
           ) : tab === "Ringkasan" ? (
             <Reports s={state} />
+          ) : tab === accountsTab && state.admin ? (
+            <AccountManagement s={state} run={run} busy={busy || !ready} />
           ) : tab === "Kelola" && state.admin ? (
             <Management
               key={event?.id}

@@ -1,5 +1,6 @@
 export function Icon({ name }: { name: string }) {
   const paths: Record<string, string> = {
+    "Account Management": "M15 20v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2m9-13a3.5 3.5 0 1 1-7 0 3.5 3.5 0 0 1 7 0m3-3a3.5 3.5 0 0 1 0 7m1 3a4 4 0 0 1 4 4v2",
     Kelola: "M4 7h16M4 17h16M8 4v6m8 4v6",
     Kasir: "M3 9h18l-2-6H5zm2 1v10h14V10M9 20v-6h5v6",
     Transaksi: "M6 3h12v18l-3-2-3 2-3-2-3 2zM9 8h6M9 12h6",
