@@ -26,7 +26,7 @@ function Form({ title, children, submit, button = "Simpan", busy = false }) {
           password.value = "";
       }}
     >
-      <h3>{title}</h3>
+      {title && <h3>{title}</h3>}
       {children}
       <button disabled={busy}>{button}</button>
     </form>
@@ -63,6 +63,7 @@ export function Management({ s, run, busy }: Props) {
   const setup = (title, event) => (
     <Form
       title={title}
+      button={event ? "Simpan nama" : "Simpan"}
       busy={busy}
       submit={(p) => run({ ...p, action: event ? "rename" : "event" })}
     >
@@ -85,10 +86,9 @@ export function Management({ s, run, busy }: Props) {
 
       {e && (
         <div className="panel stack settings-list">
-          <section>
-            <h3>{e.name} · {e.active ? "Aktif" : "Nonaktif"}</h3>
-            {setup("Ubah nama event", e)}
-            <hr />
+          <section className="event-settings" key={e.id}>
+            <div className="event-controls">
+              <h3>{e.name} · {e.active ? "Aktif" : "Nonaktif"}</h3>
             {e.current && (
               <button disabled={busy} onClick={() => run({ action: "mode", mode: e.active ? "off" : "on" })}>
                 {e.active ? "Akhiri event" : "Aktifkan event"}
@@ -102,6 +102,8 @@ export function Management({ s, run, busy }: Props) {
                 Jadikan event utama
               </button>
             )}
+            </div>
+            {setup("", e)}
           </section>
           <details>
             <summary>Tenant dan penugasan kasir</summary>

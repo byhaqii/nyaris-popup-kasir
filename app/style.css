@@ -1159,3 +1159,12 @@ meter { accent-color:#daf177; max-width:24%; }
 .account-management .report td:last-child,
 .account-management .report thead th:last-child { text-align:right; }
 .account-management .report tbody tr + tr { border-top:1px solid rgb(244 243 233 / 12%); }
+
+.management-groups { display: grid; gap: 20px; }
+.management-groups > button { justify-self: start; }
+.management-groups > .settings-list { margin-top: 0; }
+.event-settings { display: grid; gap: 20px; padding-block: 20px; }
+.event-controls { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px 24px; padding-bottom: 16px; border-bottom: 1px solid rgb(255 255 255 / 10%); }
+.event-controls h3 { margin: 0; overflow-wrap: anywhere; }
+.event-settings .editor { width: 100%; margin: 0; }
+.settings-list.stack > details[open] { padding-bottom: 16px; }
