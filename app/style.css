@@ -9,11 +9,11 @@ body {
   background: #171919;
   color: #f4f3e9;
   font:
-    15px system-ui,
-    sans-serif;
+    15px -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
 }
 button,
 input,
+textarea,
 select {
   font: inherit;
 }
@@ -36,7 +36,7 @@ button:hover {
 button:focus-visible,
 input:focus-visible,
 select:focus-visible {
-  outline: 3px solid #a6c7ff;
+  outline: 3px solid #d1b9ef;
   outline-offset: 3px;
 }
 button:disabled {
@@ -157,7 +157,7 @@ header i {
   width: 7px;
   height: 7px;
   border-radius: 50%;
-  background: #d4ed85;
+  background: currentColor;
   margin-right: 5px;
 }
 .event {
@@ -1078,3 +1078,16 @@ button:active:not(:disabled) {
 .profile-identity strong { font-size:18px; overflow-wrap:anywhere; }
 .profile-identity small { font-size:14px; color:#bec5bc; margin-top:2px; }
 .account-dialog > button { font-size:15px; padding-inline:14px; }
+
+h1, h2, h3, .total {
+  font-family: ui-rounded, -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+}
+.online {
+  color: #c2c6c2;
+  border-color: #494e49;
+}
+.online[data-active="true"] {
+  color: #a7dfbc;
+  background: #22352a;
+  border-color: #456750;
+}

@@ -359,7 +359,7 @@ export default function Workspace({ initial }: { initial: State }) {
           <span>
             Nyaris Popup <i>/</i> <strong>{tab}</strong>
           </span>
-          <span className="online">
+          <span className="online" data-active={Boolean(event?.active)}>
             <em /> {!event ? "Belum ada event" : event.active ? "Event aktif" : "Event nonaktif"}
           </span>
 
