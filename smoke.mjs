@@ -61,6 +61,8 @@ try {
     401,
   );
   await login("owner");
+  await act("owner", "account", { name: "short-test", password: "1234567" }, 400);
+  await act("owner", "account", { name: "eight-test", password: "12345678", role: "developer" });
   const home = await fetch(base, { headers: { cookie: users.owner } });
   assert.equal(home.status, 200);
   assert.match(await home.text(), /Meja kasir/);

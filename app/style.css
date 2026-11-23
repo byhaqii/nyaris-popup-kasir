@@ -1053,3 +1053,28 @@ button:active:not(:disabled) {
   .shell nav { grid-auto-columns: minmax(0,1fr); gap: 0; }
   .shell nav button { font-size: clamp(10px, 2.7vw, 12px); }
 }
+
+.filter-choice { position:relative; display:grid; gap:6px; min-width:0; font-size:14px; }
+.filter-choice > button { display:flex; align-items:center; justify-content:space-between; gap:8px; min-height:44px; padding:8px 12px; text-align:left; overflow-wrap:anywhere; background:#191c19; }
+.filter-choice > button::after { content:""; width:7px; height:7px; border:solid currentColor; border-width:0 1.5px 1.5px 0; transform:rotate(45deg); flex:none; }
+.filter-options { position:absolute; z-index:4; inset:100% 0 auto; margin-top:4px; max-height:240px; overflow:auto; padding:4px; border:1px solid #54594f; border-radius:10px; background:#242824; }
+.filter-options button { width:100%; min-height:40px; border:0; text-align:left; background:transparent; overflow-wrap:anywhere; }
+.filter-options button[aria-pressed=true] { color:#ddf58d; background:#343a2c; }
+.account-management { display:grid; gap:16px; min-width:0; }
+.account-management .panel { min-width:0; }
+.role-field { padding:0; margin:0; border:0; min-width:0; }
+.role-field legend { font-size:13px; padding:0; margin-bottom:5px; }
+.role-field > div { display:flex; height:44px; border:1px solid #53594d; border-radius:8px; padding:3px; background:#181c18; box-sizing:border-box; }
+.role-field label { flex:1; position:relative; cursor:pointer; }
+.role-field input[type=radio] { position:absolute; opacity:0; width:1px; height:1px; min-height:0; }
+.role-field span { display:grid; place-items:center; border-radius:5px; }
+.role-field input:checked + span { color:#ddf58d; background:#343a2c; font-weight:650; }
+.role-field input:focus-visible + span { outline:2px solid #ddf58d; }
+.account-dialog { box-sizing:border-box; width:min(360px,calc(100vw - 32px)); padding:20px; }
+.account-heading h2 { font-size:20px; letter-spacing:-.02em; }
+.account-heading button { background:transparent; border:0; }
+.profile-identity { display:flex; align-items:center; gap:12px; margin:14px 0 18px; padding-bottom:18px; border-bottom:1px solid #454a42; }
+.profile-identity b { display:grid; place-items:center; flex:none; width:44px; height:44px; border-radius:50%; background:#dac8f1; color:#342e39; }
+.profile-identity strong { font-size:18px; overflow-wrap:anywhere; }
+.profile-identity small { font-size:14px; color:#bec5bc; margin-top:2px; }
+.account-dialog > button { font-size:15px; padding-inline:14px; }

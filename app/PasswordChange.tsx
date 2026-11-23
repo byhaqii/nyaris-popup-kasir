@@ -74,12 +74,12 @@ export default function PasswordChange() {
               />
             </label>
             <label>
-              Kata sandi baru (minimal 12 karakter)
+              Kata sandi baru (minimal 8 karakter)
               <input
                 required
                 type="password"
                 name="newPassword"
-                minLength={12}
+                minLength={8}
                 maxLength={256}
                 autoComplete="new-password"
               />

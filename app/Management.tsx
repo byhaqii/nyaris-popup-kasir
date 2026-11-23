@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { rupiah, type State } from "./model";
 type Props = {
   s: State;
@@ -80,11 +80,8 @@ export function Management({ s, run, busy }: Props) {
   );
   return (
     <section className="management-groups">
-      <div className="panel stack settings-list">
-      <details open={!e}>
-        <summary>Buat event</summary>
-        {setup("Event baru", null)}
-      </details>
+      <div className="panel stack">
+        {setup("Buat event", null)}
       </div>
       {e && (
         <div className="panel stack settings-list">
@@ -256,6 +253,25 @@ export function Management({ s, run, busy }: Props) {
     </section>
   );
 }
+function FilterChoice({ label, values, value, onChange }: {
+  label: string; values: string[]; value: string; onChange: (value: string) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const trigger = useRef<HTMLButtonElement>(null);
+  const display = (v: string) => label === "Status" && v === "paid" ? "Lunas" :
+    label === "Status" && v === "cancelled" ? "Dibatalkan" : v || "Semua";
+  return <div className="filter-choice"
+    onBlur={(e) => { if (!e.currentTarget.contains(e.relatedTarget)) setOpen(false); }}
+    onKeyDown={(e) => { if (e.key === "Escape") { setOpen(false); trigger.current?.focus(); } }}>
+    <span>{label}</span>
+    <button type="button" ref={trigger} aria-label={label + ", " + display(value)}
+      aria-expanded={open} onClick={() => setOpen(!open)}>{display(value)}</button>
+    {open && <div className="filter-options" role="group" aria-label={label}>
+      {["", ...values].map(v => <button type="button" key={v} aria-pressed={v === value}
+        onClick={() => { onChange(v); setOpen(false); trigger.current?.focus(); }}>{display(v)}</button>)}
+    </div>}
+  </div>;
+}
 export function History({ s, run, busy }: Props) {
   const [filter, F] = useState({
     tenant: "",
@@ -275,31 +291,9 @@ export function History({ s, run, busy }: Props) {
           method: ["QRIS", "Cash"],
           status: ["paid", "cancelled"],
         }).map(([k, values]) => (
-          <label key={k}>
-            {
-              {
-                tenant: "Tenant",
-                cashier: "Kasir",
-                method: "Metode",
-                status: "Status",
-              }[k]
-            }
-            <select
-              value={filter[k]}
-              onChange={(e) => F({ ...filter, [k]: e.target.value })}
-            >
-              <option value="">Semua</option>
-              {values.map((v) => (
-                <option key={v} value={v}>
-                  {v === "paid"
-                    ? "Lunas"
-                    : v === "cancelled"
-                      ? "Dibatalkan"
-                      : v}
-                </option>
-              ))}
-            </select>
-          </label>
+          <FilterChoice key={k} label={{tenant:"Tenant", cashier:"Kasir", method:"Metode", status:"Status"}[k]}
+            values={values} value={filter[k]} onChange={(value) => F({ ...filter, [k]: value })} />
+
         ))}
       </div>
       {!rows.length && <p>Belum ada transaksi yang sesuai.</p>}
@@ -473,36 +467,47 @@ export function Reports({ s }: { s: State }) {
 
 export function AccountManagement({ s, run, busy }: Props) {
   const admin = s.admin;
+  const [editing, setEditing] = useState<number | null>(null);
+  const u = admin?.users.find(user => user.id === editing);
   if (!admin) return null;
   return (
-    <section className="panel stack account-management">
+    <div className="account-management">
+      <section className="panel stack">
         <Form
           title="Buat akun"
           busy={busy}
           submit={(p) => run({ ...p, action: "account" })}
         >
           <Field label="Username" name="name" />
-          <label>Role
-            <select name="role" defaultValue="cashier">
-              <option value="cashier">Kasir</option>
-              <option value="developer">Developer</option>
-            </select>
-          </label>
+          <fieldset className="role-field"><legend>Role</legend>
+            <div>{["cashier", "developer"].map((role) => <label key={role}>
+              <input type="radio" name="role" value={role} defaultChecked={role === "cashier"} />
+              <span>{role === "cashier" ? "Kasir" : "Developer"}</span>
+            </label>)}</div>
+          </fieldset>
           <Field
-            label="Kata sandi awal (minimal 12 karakter)"
+            label="Kata sandi awal (minimal 8 karakter)"
             name="password"
             type="password"
-            minLength={12}
+            minLength={8}
             autoComplete="new-password"
           />
         </Form>
-        {admin.users.map((u) => (
-          <details key={u.id}>
-            <summary>
-              {u.name} · {u.role === "developer" ? "Developer" : "Kasir"} · {u.enabled ? "Aktif" : "Nonaktif"}
-            </summary>
+      </section>
+      <section className="panel stack">
+        <h3>Daftar akun</h3>
+        <div className="scroll"><table className="report"><thead><tr>
+          <th>Username</th><th>Role</th><th>Status</th><th>Aksi</th>
+        </tr></thead><tbody>{admin.users.map(user => <tr key={user.id}>
+          <th scope="row">{user.name}</th><td>{user.role === "cashier" ? "Kasir" : "Developer"}</td>
+          <td>{user.enabled ? "Aktif" : "Nonaktif"}</td>
+          <td><button aria-label={`Edit akun ${user.name}`} aria-expanded={editing === user.id}
+            onClick={() => setEditing(editing === user.id ? null : user.id)}>{editing === user.id ? "Tutup" : "Edit"}</button></td>
+        </tr>)}</tbody></table></div>
+        {u && (
             <Form
-              title="Pengaturan akun"
+              key={u.id}
+              title={`Edit akun ${u.name}`}
               busy={busy}
               submit={(p) =>
                 run({
@@ -531,12 +536,12 @@ export function AccountManagement({ s, run, busy }: Props) {
                 label="Kata sandi baru (opsional)"
                 name="password"
                 type="password"
-                minLength={12}
+                minLength={8}
                 required={false}
               />
             </Form>
-          </details>
-        ))}
-    </section>
+        )}
+      </section>
+    </div>
   );
 }

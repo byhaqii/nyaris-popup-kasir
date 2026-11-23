@@ -350,7 +350,7 @@ export default function Workspace({ initial }: { initial: State }) {
           <h2 id="profile-title">Profil</h2>
           <button autoFocus aria-label="Tutup profil" onClick={() => profileDialog.current?.close()}>×</button>
         </div>
-        <p>{state.user.name}<small>{state.user.role}</small></p>
+        <div className="profile-identity"><b aria-hidden="true">{state.user.name.slice(0, 2).toUpperCase()}</b><div><strong>{state.user.name}</strong><small>{state.user.role === "developer" ? "Developer" : "Kasir"}</small></div></div>
         <PasswordChange />
         <button onClick={() => { profileDialog.current?.close(); void logout(); }}>Keluar</button>
       </dialog>
