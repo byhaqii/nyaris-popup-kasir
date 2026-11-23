@@ -1,20 +1,14 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
 import { pendingPayment, receiptMessage, reservePayment, forgetPayment } from "../lib/payment.mjs";
-import { grossSales as sum } from "../lib/sales.mjs";
+import FloatingNavbar from "../components/ui/smoothui/floating-navbar";
 import PasswordChange from "./PasswordChange";
 import { Icon } from "./art";
 import { AccountManagement, Management, History, Reports } from "./Management";
 import { rupiah, type State } from "./model";
-const tabs = ["Kasir", "Transaksi", "Ringkasan", "Sesi"];
+const tabs = ["Kasir", "Transaksi", "Ringkasan"];
 const accountsTab = "Account Management";
 const developerTabs = [...tabs, "Kelola", accountsTab];
-const clock = (s: string) =>
-  new Date(s).toLocaleTimeString("id-ID", {
-    hour: "2-digit",
-    minute: "2-digit",
-    timeZone: "Asia/Jakarta",
-  });
 export default function Workspace({ initial }: { initial: State }) {
   const [tab, T] = useState("Kasir"),
     [state, S] = useState<State>(initial),
@@ -26,13 +20,13 @@ export default function Workspace({ initial }: { initial: State }) {
     [success, U] = useState(""),
     [dialog, D] = useState(""),
     [ready, R] = useState(true);
-  const [more, setMore] = useState(false);
+
   const [missing, setMissing] = useState(false);
   const profileDialog = useRef<HTMLDialogElement>(null);
   const pendingKey = "nyaris:payment:" + state.user.id;
   const [pending, setPending] = useState(null);
   const etag = useRef(""),
-    confirmation = useRef<{ eid: number; sid: number } | null>(null),
+    confirmation = useRef<{ eid: number } | null>(null),
     locked = useRef(false),
     modal = useRef<HTMLDialogElement>(null),
     first = useRef<HTMLButtonElement>(null);
@@ -111,15 +105,12 @@ export default function Workspace({ initial }: { initial: State }) {
     if (dialog) modal.current?.showModal();
     else modal.current?.close();
   }, [dialog]);
-  const session = state.sessions.find((s) => !s.end),
-    active = !!session && session.uid === state.user.id,
-    amt = Number(amount),
+  const amt = Number(amount),
     valid =
       (draftEvent === null || draftEvent === event?.id) &&
       tenants.includes(tenant) &&
       amt > 0 &&
       event?.active &&
-      active &&
       ready;
   const reset = () => {
     E("");
@@ -221,46 +212,31 @@ export default function Workspace({ initial }: { initial: State }) {
       W(false);
     }
   }
-  async function save(action: string) {
+  async function save() {
     setMissing(false);
     let request,
       recovered = false;
     try {
       request =
-        action === "sale"
-          ? pending ||
+        pending ||
             (await reservePayment(localStorage, pendingKey, {
               tenant, amount: amt, method, ...confirmation.current,
-            }).then(result => { recovered = result.recovered; return result.request; }))
-          : {
-              action,
-              sid: session?.id,
-              ...(action === "end" ? confirmation.current : {}),
-            };
+            }).then(result => { recovered = result.recovered; return result.request; }));
     } catch {
       E("Penyimpanan browser tidak tersedia. Pembayaran belum dikirim.");
       return;
     }
-    if (action === "sale") {
-      setPending(request);
-      A(request.tenant);
-      B(String(request.amount));
-      M(request.method);
-      if (recovered) return;
-    }
-    if (
-      !(await run(request, (data) => {
-        if (action === "sale") {
-          U(receiptMessage(request, data.receipt));
-          clearPending(request.id);
-        }
-      }))
-    )
-      return;
+    setPending(request);
+    A(request.tenant);
+    B(String(request.amount));
+    M(request.method);
+    if (recovered) return;
+    if (!(await run(request, data => {
+      U(receiptMessage(request, data.receipt));
+      clearPending(request.id);
+    }))) return;
     D("");
-    if (action === "sale") {
-      resetVoucher();
-    }
+    resetVoucher();
     reset();
   }
   useEffect(() => {
@@ -277,7 +253,7 @@ export default function Workspace({ initial }: { initial: State }) {
     return () => window.removeEventListener("hashchange", apply);
   }, [isDeveloper]);
   const nav = (t: string) => {
-    setMore(false);
+
     location.hash = t;
     T(t);
     E("");
@@ -301,30 +277,17 @@ export default function Workspace({ initial }: { initial: State }) {
     ? "Belum ada event yang tersedia."
     : !event.active
       ? "Event belum aktif atau sudah ditutup."
-      : session && !active
-        ? "Sesi sedang digunakan oleh " + session.cashier + "."
-        : !active
-          ? "Mulai sesi kasir untuk mencatat pembayaran."
-          : "";
+      : "";
+  const destinations = state.admin ? developerTabs : tabs;
+  const label = (name: string) => name === accountsTab ? "Akun" : name;
   return (
     <div className="shell">
       <aside>
         <div className="brand">
           nyaris<span>popup.</span>
         </div>
-        <nav aria-label="Navigasi utama" data-more={more}>
-          {(state.admin ? developerTabs : tabs).map((t) => (
-            <button
-              key={t}
-              data-secondary={!tabs.slice(0,3).includes(t)} className={tab === t ? "on" : ""}
-              aria-current={tab === t ? "page" : undefined}
-              onClick={() => nav(t)}
-            >
-              <Icon name={t} />
-              {t === accountsTab ? "Akun" : t === "Sesi" ? "Sesi Kasir" : t}
-            </button>
-          ))}
-          <button className="more-nav" aria-expanded={more} onClick={() => setMore(!more)}>Lainnya</button>
+        <nav className="desktop-nav" aria-label="Primary">
+          {destinations.map(t => <button key={t} className={tab === t ? "on" : ""} aria-current={tab === t ? "page" : undefined} onClick={() => nav(t)}><Icon name={t} />{label(t)}</button>)}
         </nav>
         <button
           className="profile profile-trigger"
@@ -346,15 +309,6 @@ export default function Workspace({ initial }: { initial: State }) {
         <button onClick={() => { profileDialog.current?.close(); void logout(); }}>Keluar</button>
       </dialog>
       <main>
-        <header>
-          <span>
-            Nyaris Popup {tab !== accountsTab && <><i>/</i> <strong>{tab}</strong></>}
-          </span>
-          <span className="online" data-active={Boolean(event?.active)}>
-            <em /> {!event ? "Belum ada event" : event.active ? "Event aktif" : "Event nonaktif"}
-          </span>
-
-        </header>
         <div
           className={
             (tab === "Kelola" || tab === accountsTab)
@@ -364,7 +318,9 @@ export default function Workspace({ initial }: { initial: State }) {
                 : "content"
           }
         >
-          {(tab === "Kelola" || tab === accountsTab) && <h1>{tab === accountsTab ? "Manajemen akun" : tab}</h1>}
+          <div className="workspace-title"><h1>{tab === "Kasir" ? "Meja kasir" : tab === accountsTab ? "Manajemen akun" : tab}</h1><span className="online" data-active={Boolean(event?.active)}>
+            <em /> {!event ? "Belum ada event" : event.active ? "Event aktif" : "Event nonaktif"}
+          </span></div>
           {tab !== accountsTab && state.events.length > 0 && (
             <label className="eventpick">
               Event{" "}
@@ -399,30 +355,9 @@ export default function Workspace({ initial }: { initial: State }) {
               </select>
             </label>
           )}
-          {tab !== "Kelola" && tab !== accountsTab && (
-            <div className="pageTitle">
-              <h2>
-                {tab === "Kasir"
-                  ? "Meja kasir"
-                  : tab === "Sesi"
-                    ? "Sesi kasir"
-                    : tab}
-              </h2>
-              {event?.active && (tab === "Sesi" || tab === "Kasir") && (
-                <span className="session">
-                  {!ready ? "Menghubungkan…" : active ? "Sesi Anda aktif" : session ? `Kasir bertugas: ${session.cashier}` : "Belum ada sesi aktif"}
-                </span>
-              )}
-            </div>
-          )}
           {tab === "Kasir" && gate && !pending && (
             <section className="panel gate">
               <p>{gate}</p>
-              {event?.active && !session && (
-                <button className="primary" disabled={busy || !ready} onClick={() => save("start")}>
-                  Mulai sesi kasir
-                </button>
-              )}
               {state.admin && !event && (
                 <button onClick={() => nav("Kelola")}>Siapkan event</button>
               )}
@@ -551,7 +486,7 @@ export default function Workspace({ initial }: { initial: State }) {
                   disabled={(!pending && !valid) || busy}
                   onClick={() => {
                     if (!pending)
-                      confirmation.current = { eid: event.id, sid: session.id };
+                      confirmation.current = { eid: event.id };
                     setMissing(false);
                     D("sale");
                   }}
@@ -582,88 +517,7 @@ export default function Workspace({ initial }: { initial: State }) {
               run={run}
               busy={busy || !ready}
             />
-          ) : (
-            <section className="panel stack session-activity">
-              <h3>Sesi kamu</h3>
-              <p>{active ? event.name + " · Mulai " + clock(session.start) + " WIB" : event?.active && !session ? "Mulai sesi untuk mencatat transaksi atas namamu." : gate}</p>
-              {active ? (
-                <button
-                  className="primary"
-                  disabled={busy || !ready}
-                  onClick={() => {
-                    confirmation.current = { eid: event.id, sid: session.id };
-                    D("end");
-                  }}
-                >
-                  Akhiri Sesi
-                </button>
-              ) : session && state.admin ? (
-                <form
-                  className="editor"
-                  onSubmit={(e) => {
-                    e.preventDefault();
-                    run({
-                      action: "recover",
-                      sid: session.id,
-                      reason: new FormData(e.currentTarget).get("reason"),
-                    });
-                  }}
-                >
-                  <label>
-                    Alasan menutup sesi {session.cashier}
-                    <input required name="reason" />
-                  </label>
-                  <button disabled={busy || !ready}>
-                    Tutup sesi yang ditinggalkan
-                  </button>
-                </form>
-              ) : event?.active && !session && (
-                <button
-                  disabled={busy || !ready}
-                  onClick={() => save("start")}
-                >
-                  Mulai sesi kasir
-                </button>
-              )}
-              <h3>Aktivitas sesi</h3>
-              {state.sessions.map((s) => {
-                const rows = state.sales.filter(
-                  (v) => v.sid === s.id && v.status === "paid",
-                );
-                return (
-                  <article key={s.id}>
-                    <div>
-                      <b>
-                        {s.cashier} · Sesi {s.id}
-                      </b>
-                      <small>
-                        {clock(s.start)} – {s.end ? clock(s.end) : "Sekarang"}{" "}
-                        WIB ·{" "}
-                        {Math.max(
-                          0,
-                          Math.floor(
-                            (Date.parse(s.end || state.refreshed) -
-                              Date.parse(s.start)) /
-                              60000,
-                          ),
-                        )}{" "}
-                        menit
-                      </small>
-                    </div>
-                    <div>
-                      {rupiah(sum(rows))}
-                      <small>
-                        {rows.length} transaksi · Cash{" "}
-                        {rupiah(sum(rows.filter((v) => v.method === "Cash")))} ·
-                        QRIS{" "}
-                        {rupiah(sum(rows.filter((v) => v.method === "QRIS")))}
-                      </small>
-                    </div>
-                  </article>
-                );
-              })}
-            </section>
-          )}
+          ) : null}
           {notice && tab !== "Kasir" && <p role="status">{notice}</p>}
           {draftEvent !== null && draftEvent !== event?.id && tenant && (
             <p role="alert">
@@ -674,6 +528,7 @@ export default function Workspace({ initial }: { initial: State }) {
           {!dialog && err && <p role="alert">{err}</p>}
         </div>
       </main>
+      <FloatingNavbar position="bottom" activeId={tab} onActiveChange={nav} items={destinations.map(t => ({ id:t, label:label(t), icon:<Icon name={t} /> }))} />
       <dialog
         aria-labelledby="confirmation-title"
         aria-describedby="confirmation-summary"
@@ -684,32 +539,21 @@ export default function Workspace({ initial }: { initial: State }) {
         }}
       >
         <h2 id="confirmation-title">
-          {dialog === "sale"
-            ? pending
+          {pending
               ? missing
                 ? "Pembayaran belum tercatat"
                 : "Periksa pembayaran tertunda"
-              : "Pembayaran diterima?"
-            : "Akhiri sesi kasir?"}
+              : "Pembayaran diterima?"}
         </h2>
         <p id="confirmation-summary">
-          {dialog === "sale"
-            ? (pending?.tenant || tenant) +
-              " · " +
-              rupiah(pending?.amount || amt) +
-              " · " +
-              (pending?.method || method)
-            : "Total sesi " +
-              rupiah(sum(state.sales.filter((s) => s.sid === session?.id)))}
+          {pending?.tenant || tenant} · {rupiah(pending?.amount || amt)} · {pending?.method || method}
         </p>
         <p>
-          {dialog === "sale"
-            ? pending && !missing
+          {pending && !missing
               ? "Periksa apakah voucher sudah tersimpan."
               : (pending?.method || method) === "QRIS"
                 ? "Pastikan nominal sudah masuk di GoPay Merchant."
-                : "Pastikan uang tunai sudah diterima."
-            : "Transaksi berikutnya membutuhkan sesi baru."}
+                : "Pastikan uang tunai sudah diterima."}
         </p>
         {err && <p role="alert">{err}</p>}
         <button disabled={busy} onClick={() => D("")}>
@@ -721,20 +565,18 @@ export default function Workspace({ initial }: { initial: State }) {
           onClick={() =>
             dialog === "sale" && pending && !missing
               ? checkPayment()
-              : save(dialog)
+              : save()
           }
         >
           {busy
             ? pending && !missing && dialog === "sale"
               ? "Memeriksa…"
               : "Menyimpan…"
-            : dialog === "sale"
-              ? pending
+            : pending
                 ? missing
                   ? "Simpan pembayaran"
                   : "Periksa pembayaran"
-                : "Ya, simpan pembayaran"
-              : "Akhiri Sesi"}
+                : "Ya, simpan pembayaran"}
         </button>
       </dialog>
     </div>

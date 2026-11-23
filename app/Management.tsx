@@ -326,8 +326,7 @@ export function History({ s, run, busy }: Props) {
               <small>{v.cashier} · {v.method} · {identity}</small>
             </summary>
             <p>
-              {wib(v.created).replace("T", " ")} WIB · {v.cashier} · Sesi{" "}
-              {v.sid}
+              {wib(v.created).replace("T", " ")} WIB · {v.cashier}
             </p>
             <small>ID {v.id}</small>
             {allowed && (

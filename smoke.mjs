@@ -288,6 +288,18 @@ try {
   state = await act("owner", "mode", { mode: "off" });
   assert.equal(state.event.active, false);
   assert(state.sessions.every(session => session.end));
+  const directSale = { id: randomUUID(), tenant: "Tenant A", amount: 1000, method: "Cash" };
+  await act("owner", "sale", directSale, 409);
+  await act("owner", "mode", { mode: "on" });
+  for (const who of ["owner", "rekan"]) {
+    const request = { ...directSale, id: randomUUID() };
+    await act(who, "sale", request);
+    const retried = await act(who, "sale", request);
+    const matches = retried.sales.filter(row => row.id === request.id);
+    assert.equal(matches.length, 1);
+    assert.equal(matches[0].cashier, who);
+  }
+  await act("owner", "mode", { mode: "off" });
   const otherEvent = await act("owner", "event", {
     name: "Other",
   });
