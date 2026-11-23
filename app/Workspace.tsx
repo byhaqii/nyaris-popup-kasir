@@ -322,8 +322,7 @@ export default function Workspace({ initial }: { initial: State }) {
         <div className="brand">
           nyaris<span>popup.</span>
         </div>
-        <div className="navlabel">WORKSPACE</div>
-        <nav>
+        <nav aria-label="Navigasi utama">
           {(state.admin ? developerTabs : tabs).map((t) => (
             <button
               key={t}
@@ -361,13 +360,13 @@ export default function Workspace({ initial }: { initial: State }) {
             Nyaris Popup <i>/</i> <strong>{tab}</strong>
           </span>
           <span className="online">
-            <em /> {event?.active ? "Event aktif" : "Event nonaktif"}
+            <em /> {!event ? "Belum ada event" : event.active ? "Event aktif" : "Event nonaktif"}
           </span>
 
         </header>
         <div
           className={
-            tab === "Kelola"
+            (tab === "Kelola" || tab === accountsTab)
               ? "content settings-content"
               : tab === "Kasir"
                 ? "content cashier-content"
@@ -375,26 +374,6 @@ export default function Workspace({ initial }: { initial: State }) {
           }
         >
           {(tab === "Kelola" || tab === accountsTab) && <h1>{tab}</h1>}
-          {tab !== "Kelola" && tab !== accountsTab && (
-            <div className="event">
-              <div>
-                <div className="eyebrow">EVENT</div>
-                <h1>
-                  {event?.name || "Belum ada event"}
-                  <span>.</span>
-                </h1>
-
-              </div>
-              <div className="poster" aria-hidden="true">
-                <span>✳</span>
-                <b>
-                  POP
-                  <br />
-                  UP!
-                </b>
-              </div>
-            </div>
-          )}
           {tab !== accountsTab && state.events.length > 0 && (
             <label className="eventpick">
               Event{" "}
@@ -438,13 +417,11 @@ export default function Workspace({ initial }: { initial: State }) {
                     ? "Sesi kasir"
                     : tab}
               </h2>
-              <span className="session">
-                {ready
-                  ? active
-                    ? "●  Sesi aktif"
-                    : "○  Tanpa sesi sendiri"
-                  : "Menghubungkan…"}
-              </span>
+              {event?.active && (tab === "Sesi" || tab === "Kasir") && (
+                <span className="session">
+                  {!ready ? "Menghubungkan…" : active ? "Sesi Anda aktif" : session ? `Kasir bertugas: ${session.cashier}` : "Belum ada sesi aktif"}
+                </span>
+              )}
             </div>
           )}
           {tab === "Kasir" && gate && !pending && (
@@ -615,8 +592,9 @@ export default function Workspace({ initial }: { initial: State }) {
               busy={busy || !ready}
             />
           ) : (
-            <section className="panel stack">
+            <section className="panel stack session-activity">
               <h3>Aktivitas sesi</h3>
+              {!state.sessions.length && <p>{!event ? "Belum ada event untuk memulai sesi kasir." : !event.active ? "Sesi dapat dimulai setelah developer mengaktifkan event." : "Mulai sesi untuk mencatat transaksi atas nama Anda."}</p>}
               {state.sessions.map((s) => {
                 const rows = state.sales.filter(
                   (v) => v.sid === s.id && v.status === "paid",
@@ -684,9 +662,9 @@ export default function Workspace({ initial }: { initial: State }) {
                     Tutup sesi yang ditinggalkan
                   </button>
                 </form>
-              ) : (
+              ) : event?.active && !session && (
                 <button
-                  disabled={busy || !ready || !!session || !event?.active}
+                  disabled={busy || !ready}
                   onClick={() => save("start")}
                 >
                   Mulai Sesi
@@ -700,7 +678,7 @@ export default function Workspace({ initial }: { initial: State }) {
               Event berubah. Periksa voucher dan pilih tenant kembali.
             </p>
           )}
-          {!ready && <p role="status">Menunggu koneksi ke database lokal.</p>}
+          {!ready && <p role="status">Menghubungkan ke server…</p>}
           {!dialog && err && <p role="alert">{err}</p>}
         </div>
       </main>
