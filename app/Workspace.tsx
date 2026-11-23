@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
-import { pendingPayment, receiptMessage } from "../lib/payment.mjs";
+import { pendingPayment, receiptMessage, reservePayment, forgetPayment } from "../lib/payment.mjs";
+import { grossSales as sum } from "../lib/sales.mjs";
 import PasswordChange from "./PasswordChange";
 import { Icon } from "./art";
 import { AccountManagement, Management, History, Reports } from "./Management";
@@ -25,6 +26,7 @@ export default function Workspace({ initial }: { initial: State }) {
     [success, U] = useState(""),
     [dialog, D] = useState(""),
     [ready, R] = useState(true);
+  const [more, setMore] = useState(false);
   const [missing, setMissing] = useState(false);
   const profileDialog = useRef<HTMLDialogElement>(null);
   const pendingKey = "nyaris:payment:" + state.user.id;
@@ -119,14 +121,11 @@ export default function Workspace({ initial }: { initial: State }) {
       event?.active &&
       active &&
       ready;
-  const sum = (rows: State["sales"]) =>
-    rows.filter((r) => r.status === "paid").reduce((a, b) => a + b.amount, 0);
   const reset = () => {
     E("");
   };
   function clearPending(id) {
-    if (pendingPayment(localStorage, pendingKey, null)?.id === id)
-      localStorage.removeItem(pendingKey);
+    forgetPayment(localStorage, pendingKey, id);
     setPending(null);
   }
   async function run(
@@ -230,19 +229,9 @@ export default function Workspace({ initial }: { initial: State }) {
       request =
         action === "sale"
           ? pending ||
-            (await navigator.locks.request(pendingKey, () => {
-              const existing = pendingPayment(localStorage, pendingKey, null);
-              if (existing) {
-                recovered = true;
-                return existing;
-              }
-              return pendingPayment(localStorage, pendingKey, {
-                tenant,
-                amount: amt,
-                method,
-                ...confirmation.current,
-              });
-            }))
+            (await reservePayment(localStorage, pendingKey, {
+              tenant, amount: amt, method, ...confirmation.current,
+            }).then(result => { recovered = result.recovered; return result.request; }))
           : {
               action,
               sid: session?.id,
@@ -288,6 +277,7 @@ export default function Workspace({ initial }: { initial: State }) {
     return () => window.removeEventListener("hashchange", apply);
   }, [isDeveloper]);
   const nav = (t: string) => {
+    setMore(false);
     location.hash = t;
     T(t);
     E("");
@@ -322,18 +312,19 @@ export default function Workspace({ initial }: { initial: State }) {
         <div className="brand">
           nyaris<span>popup.</span>
         </div>
-        <nav aria-label="Navigasi utama">
+        <nav aria-label="Navigasi utama" data-more={more}>
           {(state.admin ? developerTabs : tabs).map((t) => (
             <button
               key={t}
-              className={tab === t ? "on" : ""}
+              data-secondary={!tabs.slice(0,3).includes(t)} className={tab === t ? "on" : ""}
               aria-current={tab === t ? "page" : undefined}
               onClick={() => nav(t)}
             >
               <Icon name={t} />
-              {t === accountsTab ? <><span className="account-nav-full">Account Management</span><span className="account-nav-short">Akun</span></> : t === "Sesi" ? "Sesi Kasir" : t}
+              {t === accountsTab ? "Akun" : t === "Sesi" ? "Sesi Kasir" : t}
             </button>
           ))}
+          <button className="more-nav" aria-expanded={more} onClick={() => setMore(!more)}>Lainnya</button>
         </nav>
         <button
           className="profile profile-trigger"
@@ -357,7 +348,7 @@ export default function Workspace({ initial }: { initial: State }) {
       <main>
         <header>
           <span>
-            Nyaris Popup <i>/</i> <strong>{tab}</strong>
+            Nyaris Popup {tab !== accountsTab && <><i>/</i> <strong>{tab}</strong></>}
           </span>
           <span className="online" data-active={Boolean(event?.active)}>
             <em /> {!event ? "Belum ada event" : event.active ? "Event aktif" : "Event nonaktif"}
@@ -373,7 +364,7 @@ export default function Workspace({ initial }: { initial: State }) {
                 : "content"
           }
         >
-          {(tab === "Kelola" || tab === accountsTab) && <h1>{tab}</h1>}
+          {(tab === "Kelola" || tab === accountsTab) && <h1>{tab === accountsTab ? "Manajemen akun" : tab}</h1>}
           {tab !== accountsTab && state.events.length > 0 && (
             <label className="eventpick">
               Event{" "}
@@ -429,7 +420,7 @@ export default function Workspace({ initial }: { initial: State }) {
               <p>{gate}</p>
               {event?.active && !session && (
                 <button className="primary" disabled={busy || !ready} onClick={() => save("start")}>
-                  Mulai Sesi
+                  Mulai sesi kasir
                 </button>
               )}
               {state.admin && !event && (
@@ -593,44 +584,8 @@ export default function Workspace({ initial }: { initial: State }) {
             />
           ) : (
             <section className="panel stack session-activity">
-              <h3>Aktivitas sesi</h3>
-              {!state.sessions.length && <p>{!event ? "Belum ada event untuk memulai sesi kasir." : !event.active ? "Sesi dapat dimulai setelah developer mengaktifkan event." : "Mulai sesi untuk mencatat transaksi atas nama Anda."}</p>}
-              {state.sessions.map((s) => {
-                const rows = state.sales.filter(
-                  (v) => v.sid === s.id && v.status === "paid",
-                );
-                return (
-                  <article key={s.id}>
-                    <div>
-                      <b>
-                        {s.cashier} · Sesi {s.id}
-                      </b>
-                      <small>
-                        {clock(s.start)} – {s.end ? clock(s.end) : "Sekarang"}{" "}
-                        WIB ·{" "}
-                        {Math.max(
-                          0,
-                          Math.floor(
-                            (Date.parse(s.end || state.refreshed) -
-                              Date.parse(s.start)) /
-                              60000,
-                          ),
-                        )}{" "}
-                        menit
-                      </small>
-                    </div>
-                    <div>
-                      {rupiah(sum(rows))}
-                      <small>
-                        {rows.length} transaksi · Cash{" "}
-                        {rupiah(sum(rows.filter((v) => v.method === "Cash")))} ·
-                        QRIS{" "}
-                        {rupiah(sum(rows.filter((v) => v.method === "QRIS")))}
-                      </small>
-                    </div>
-                  </article>
-                );
-              })}
+              <h3>Sesi kamu</h3>
+              <p>{active ? event.name + " · Mulai " + clock(session.start) + " WIB" : event?.active && !session ? "Mulai sesi untuk mencatat transaksi atas namamu." : gate}</p>
               {active ? (
                 <button
                   className="primary"
@@ -667,9 +622,46 @@ export default function Workspace({ initial }: { initial: State }) {
                   disabled={busy || !ready}
                   onClick={() => save("start")}
                 >
-                  Mulai Sesi
+                  Mulai sesi kasir
                 </button>
               )}
+              <h3>Aktivitas sesi</h3>
+              {state.sessions.map((s) => {
+                const rows = state.sales.filter(
+                  (v) => v.sid === s.id && v.status === "paid",
+                );
+                return (
+                  <article key={s.id}>
+                    <div>
+                      <b>
+                        {s.cashier} · Sesi {s.id}
+                      </b>
+                      <small>
+                        {clock(s.start)} – {s.end ? clock(s.end) : "Sekarang"}{" "}
+                        WIB ·{" "}
+                        {Math.max(
+                          0,
+                          Math.floor(
+                            (Date.parse(s.end || state.refreshed) -
+                              Date.parse(s.start)) /
+                              60000,
+                          ),
+                        )}{" "}
+                        menit
+                      </small>
+                    </div>
+                    <div>
+                      {rupiah(sum(rows))}
+                      <small>
+                        {rows.length} transaksi · Cash{" "}
+                        {rupiah(sum(rows.filter((v) => v.method === "Cash")))} ·
+                        QRIS{" "}
+                        {rupiah(sum(rows.filter((v) => v.method === "QRIS")))}
+                      </small>
+                    </div>
+                  </article>
+                );
+              })}
             </section>
           )}
           {notice && tab !== "Kasir" && <p role="status">{notice}</p>}

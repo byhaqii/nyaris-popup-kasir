@@ -53,6 +53,7 @@ export type State = {
   refreshed: string;
   admin?: {
     users: { id: number; name: string; role: "cashier" | "developer"; enabled: number; email: string }[];
+    tenantStaff: {tenant:string; uid:number}[];
     assigned: number[];
     bps: number;
     sharing: { name: string; gross: number; share: number; net: number }[];

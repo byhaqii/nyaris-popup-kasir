@@ -1,6 +1,7 @@
 "use client";
 import { useState } from "react";
 export default function Login() {
+  const [visible, setVisible] = useState(false);
   const [error, E] = useState(""),
     [busy, B] = useState(false);
   return (
@@ -50,13 +51,14 @@ export default function Login() {
             Kata sandi
             <input
               name="password"
-              type="password"
+              type={visible ? "text" : "password"}
               autoComplete="current-password"
               required
             />
           </label>
+          <button type="button" aria-pressed={visible} onClick={() => setVisible(!visible)}>{visible ? "Sembunyikan" : "Lihat"} kata sandi</button>
           <button className="primary" disabled={busy}>
-            {busy ? "Memeriksa…" : "Masuk →"}
+            {busy ? "Sedang masuk…" : "Masuk →"}
           </button>
           <p role="alert">{error}</p>
         </form>

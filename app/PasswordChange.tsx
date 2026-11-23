@@ -112,6 +112,7 @@ export default function PasswordChange() {
           </form>
         )}
       </dialog>
+      {done && <p role="status">Kata sandi berhasil diubah.</p>}
     </>
   );
 }

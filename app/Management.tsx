@@ -1,5 +1,6 @@
 "use client";
 import { useRef, useState } from "react";
+import { grossSales } from "../lib/sales.mjs";
 import { rupiah, type State } from "./model";
 type Props = {
   s: State;
@@ -55,6 +56,7 @@ function Field({
 const wib = (s: string) =>
   s ? new Date(Date.parse(s) + 7 * 3600000).toISOString().slice(0, 16) : "";
 export function Management({ s, run, busy }: Props) {
+  const [creating, setCreating] = useState(false);
   const e = s.event,
     admin = s.admin;
   if (!admin) return null;
@@ -80,13 +82,11 @@ export function Management({ s, run, busy }: Props) {
   );
   return (
     <section className="management-groups">
-      <div className="panel stack">
-        {setup("Buat event", null)}
-      </div>
+
       {e && (
         <div className="panel stack settings-list">
-          <details>
-            <summary>Pengaturan event</summary>
+          <section>
+            <h3>{e.name} · {e.active ? "Aktif" : "Nonaktif"}</h3>
             {setup("Ubah nama event", e)}
             <hr />
             {e.current && (
@@ -102,7 +102,7 @@ export function Management({ s, run, busy }: Props) {
                 Jadikan event utama
               </button>
             )}
-          </details>
+          </section>
           <details>
             <summary>Tenant dan penugasan kasir</summary>
             <Form
@@ -114,7 +114,16 @@ export function Management({ s, run, busy }: Props) {
             </Form>
             {s.tenants.map((t) => (
               <article key={t.name}>
-                {t.name}
+                <div><strong>{t.name}</strong>
+                  <small>{admin.tenantStaff.filter(a => a.tenant === t.name).map(a => admin.users.find(u => u.id === a.uid)?.name).join(", ") || "Belum ada kasir"}</small>
+                  <details><summary>Atur kasir tenant</summary>
+                    {admin.users.filter(u => u.enabled && admin.assigned.includes(u.id)).map(u => <label key={u.id}>
+                      <input type="checkbox" disabled={busy} checked={admin.tenantStaff.some(a => a.tenant === t.name && a.uid === u.id)}
+                        onChange={event => run({action:"tenantStaff", tenant:t.name, uid:u.id, enabled:event.target.checked})} /> {u.name}
+                    </label>)}
+                    {!admin.assigned.length && <p>Tugaskan kasir ke event terlebih dahulu.</p>}
+                  </details>
+                </div>
                 <button
                   disabled={busy}
                   onClick={() =>
@@ -250,13 +259,15 @@ export function Management({ s, run, busy }: Props) {
           </details>
         </div>
       )}
+      {e && <button aria-expanded={creating} onClick={() => setCreating(!creating)}>{creating ? "Tutup form" : "+ Buat event"}</button>}
+      {(!e || creating) && <div className="panel stack">{setup("Buat event", null)}</div>}
     </section>
   );
 }
-function FilterChoice({ label, values, value, onChange }: {
-  label: string; values: string[]; value: string; onChange: (value: string) => void;
+function FilterChoice({ label, values, value, onChange, open, setOpen }: {
+  open: boolean; setOpen: (open: boolean) => void; label: string; values: string[]; value: string; onChange: (value: string) => void;
 }) {
-  const [open, setOpen] = useState(false);
+
   const trigger = useRef<HTMLButtonElement>(null);
   const display = (v: string) => label === "Status" && v === "paid" ? "Lunas" :
     label === "Status" && v === "cancelled" ? "Dibatalkan" : v || "Semua";
@@ -273,6 +284,8 @@ function FilterChoice({ label, values, value, onChange }: {
   </div>;
 }
 export function History({ s, run, busy }: Props) {
+  const [menu, setMenu] = useState("");
+  const [showFilters, setShowFilters] = useState(false);
   const [filter, F] = useState({
     tenant: "",
     cashier: "",
@@ -284,7 +297,8 @@ export function History({ s, run, busy }: Props) {
   );
   return (
     <section className="panel stack">
-      <div className="transaction-filters">
+      <button className="mobile-filter" aria-expanded={showFilters} onClick={() => { setShowFilters(!showFilters); setMenu(""); }}>Filter</button>
+      <div className="transaction-filters" data-visible={showFilters}>
         {Object.entries({
           tenant: s.tenants.map((t) => t.name),
           cashier: [...new Set(s.sessions.map((v) => v.cashier))],
@@ -292,11 +306,12 @@ export function History({ s, run, busy }: Props) {
           status: ["paid", "cancelled"],
         }).map(([k, values]) => (
           <FilterChoice key={k} label={{tenant:"Tenant", cashier:"Kasir", method:"Metode", status:"Status"}[k]}
-            values={values} value={filter[k]} onChange={(value) => F({ ...filter, [k]: value })} />
+            open={menu === k} setOpen={(open) => setMenu(current => open ? k : current === k ? "" : current)} values={values} value={filter[k]} onChange={(value) => F({ ...filter, [k]: value })} />
 
         ))}
       </div>
-      {!rows.length && <p>Belum ada transaksi yang sesuai.</p>}
+      {Object.values(filter).some(Boolean) && <button onClick={() => { F({ tenant:"", cashier:"", method:"", status:"" }); setMenu(""); }}>Hapus filter</button>}
+      {!rows.length && <p>{s.sales.length ? "Tidak ada transaksi yang cocok." : "Belum ada transaksi."}</p>}
       {rows.map((v) => {
         const identity =
           wib(v.created).replace("T", " ") + " WIB · #" + v.id.slice(0, 8);
@@ -306,9 +321,9 @@ export function History({ s, run, busy }: Props) {
         return (
           <details key={v.id}>
             <summary>
-              {v.tenant} · {rupiah(v.amount)} · {v.method} ·{" "}
+              <strong>{rupiah(v.amount)} · {v.tenant}</strong> ·{" "}
               {v.status === "paid" ? "Lunas" : "Dibatalkan"}
-              <small>{identity}</small>
+              <small>{v.cashier} · {v.method} · {identity}</small>
             </summary>
             <p>
               {wib(v.created).replace("T", " ")} WIB · {v.cashier} · Sesi{" "}
@@ -418,9 +433,10 @@ export function History({ s, run, busy }: Props) {
 }
 export function Reports({ s }: { s: State }) {
   const paid = s.sales.filter((v) => v.status === "paid");
+  const ranked = s.tenants.map(t => ({name:t.name, gross:grossSales(paid.filter(v => v.tenant === t.name))})).sort((a,b) => b.gross-a.gross);
   function summary(rows: State["sales"]) {
     return (
-      rupiah(rows.reduce((n, v) => n + v.amount, 0)) +
+      rupiah(grossSales(rows)) +
       " · " +
       rows.length +
       " transaksi"
@@ -429,17 +445,17 @@ export function Reports({ s }: { s: State }) {
   return (
     <section className="panel stack">
       <h3>Penjualan bruto</h3>
-      <h2>{summary(paid)}</h2>
+      <h2>{rupiah(grossSales(paid))}</h2><p>{paid.length} transaksi</p>
       {["QRIS", "Cash"].map((m) => (
         <article key={m}>
           {m} tercatat<b>{summary(paid.filter((v) => v.method === m))}</b>
         </article>
       ))}
       <h3>Penjualan tenant</h3>
-      {s.tenants.map((t) => (
+      {ranked.map(t => (
         <article key={t.name}>
-          {t.name}
-          <b>{summary(paid.filter((v) => v.tenant === t.name))}</b>
+          <span>{t.name}</span><meter aria-label={"Penjualan " + t.name} min={0} max={ranked[0].gross || 1} value={t.gross} />
+          <b>{rupiah(t.gross)}</b>
         </article>
       ))}
       <h3>Aktivitas kasir</h3>
@@ -468,15 +484,18 @@ export function Reports({ s }: { s: State }) {
 export function AccountManagement({ s, run, busy }: Props) {
   const admin = s.admin;
   const [editing, setEditing] = useState<number | null>(null);
+  const [creating, setCreating] = useState(false);
   const u = admin?.users.find(user => user.id === editing);
   if (!admin) return null;
   return (
     <div className="account-management">
       <section className="panel stack">
+        <div className="account-heading"><h3>Daftar akun</h3><button className="primary" aria-expanded={creating} onClick={() => setCreating(!creating)}>{creating ? "Tutup form" : "+ Buat akun"}</button></div>
+        {creating && <section className="panel stack">
         <Form
           title="Buat akun"
           busy={busy}
-          submit={(p) => run({ ...p, action: "account" })}
+          submit={async (p) => { const ok = await run({ ...p, action: "account" }); if (ok) setCreating(false); return ok; }}
         >
           <Field label="Username" name="name" />
           <fieldset className="role-field"><legend>Role</legend>
@@ -493,9 +512,7 @@ export function AccountManagement({ s, run, busy }: Props) {
             autoComplete="new-password"
           />
         </Form>
-      </section>
-      <section className="panel stack">
-        <h3>Daftar akun</h3>
+      </section>}
         <div className="scroll"><table className="report"><thead><tr>
           <th>Username</th><th>Role</th><th>Status</th><th>Aksi</th>
         </tr></thead><tbody>{admin.users.map(user => <tr key={user.id}>
