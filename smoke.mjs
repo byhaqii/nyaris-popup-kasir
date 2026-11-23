@@ -82,8 +82,13 @@ try {
     ["Tenant A", "Tenant B"],
   );
   eid = state.event.id;
-  for (const u of state.admin.users.filter(u => u.role === "cashier"))
-    await act("owner", "assign", { uid: u.id, enabled: true });
+  const employeeState = await (await fetch(base + "/api/pos", {
+    headers: { cookie: users.anna },
+  })).json();
+  assert.equal(employeeState.event.id, eid);
+  assert(employeeState.events.some(event => event.id === eid));
+  const anna = state.admin.users.find(user => user.name === "anna");
+  await act("owner", "tenantStaff", { uid: anna.id, tenant: "Tenant A", enabled: true });
   await act("owner", "tenant", { name: "Tenant A", enabled: true });
   state = await act("owner", "tenant", { name: "tenant a", enabled: true });
   assert.deepEqual(
@@ -303,7 +308,12 @@ try {
   const otherEvent = await act("owner", "event", {
     name: "Other",
   });
-  await act(other, "start", { eid: otherEvent.event.id }, 403);
+  const otherEmployeeState = await (await fetch(
+    base + "/api/pos?event=" + otherEvent.event.id,
+    { headers: { cookie: users[other] } },
+  )).json();
+  assert.equal(otherEmployeeState.event.id, otherEvent.event.id);
+  await act(other, "start", { eid: otherEvent.event.id }, 409);
   const token = users[other];
   await post("/api/auth", other, { action: "logout" });
   assert.equal(
@@ -344,7 +354,7 @@ try {
   });
   db.close();
   console.log(
-    "PASS: protected HTTP routes, roles, assignment, manual event controls, concurrent sessions, payments, retries, corrections, reports, logout, persistent sync retry and SQLite integrity.",
+    "PASS: protected HTTP routes, roles, automatic employee event access, manual event controls, concurrent sessions, payments, retries, corrections, reports, logout, persistent sync retry and SQLite integrity.",
   );
 } finally {
   const exited = once(server, "exit");

@@ -119,11 +119,11 @@ export function Management({ s, run, busy }: Props) {
                 <div><strong>{t.name}</strong>
                   <small>{admin.tenantStaff.filter(a => a.tenant === t.name).map(a => admin.users.find(u => u.id === a.uid)?.name).join(", ") || "Belum ada kasir"}</small>
                   <details><summary>Atur kasir tenant</summary>
-                    {admin.users.filter(u => u.enabled && admin.assigned.includes(u.id)).map(u => <label key={u.id}>
+                    {admin.users.filter(u => u.enabled && u.role === "cashier").map(u => <label key={u.id}>
                       <input type="checkbox" disabled={busy} checked={admin.tenantStaff.some(a => a.tenant === t.name && a.uid === u.id)}
                         onChange={event => run({action:"tenantStaff", tenant:t.name, uid:u.id, enabled:event.target.checked})} /> {u.name}
                     </label>)}
-                    {!admin.assigned.length && <p>Tugaskan kasir ke event terlebih dahulu.</p>}
+                    {!admin.users.some(u => u.enabled && u.role === "cashier") && <p>Belum ada akun kasir aktif.</p>}
                   </details>
                 </div>
                 <button
@@ -149,26 +149,6 @@ export function Management({ s, run, busy }: Props) {
                 riwayat masing-masing sebelum menonaktifkan salah satunya.
               </p>
             )}
-            <h3>Kasir event</h3>
-            {admin.users.filter((u) => u.role === "cashier").map((u) => (
-              <article key={u.id}>
-                {u.name}
-                <button
-                  disabled={busy}
-                  onClick={() =>
-                    run({
-                      action: "assign",
-                      uid: u.id,
-                      enabled: !admin.assigned.includes(u.id),
-                    })
-                  }
-                >
-                  {admin.assigned.includes(u.id)
-                    ? "Lepas penugasan"
-                    : "Tugaskan"}
-                </button>
-              </article>
-            ))}
           </details>
           <details>
             <summary>Bagi hasil developer</summary>
