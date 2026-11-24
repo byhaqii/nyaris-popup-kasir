@@ -536,7 +536,7 @@ export default function Workspace({ initial }: { initial: State }) {
           {!dialog && err && <p role="alert">{err}</p>}
         </div>
       </main>
-      <FloatingNavbar position="bottom" activeId={tab} onActiveChange={nav} items={destinations.map(t => ({ id:t, label:label(t), icon:<Icon name={t} /> }))} />
+      <FloatingNavbar position="bottom" hideOnScroll={false} activeId={tab} onActiveChange={nav} items={destinations.map(t => ({ id:t, label:label(t), icon:<Icon name={t} /> }))} />
       <dialog
         aria-labelledby="confirmation-title"
         aria-describedby="confirmation-summary"
