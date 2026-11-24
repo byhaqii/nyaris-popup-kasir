@@ -107,7 +107,11 @@ export function Management({ s, run, busy, error }: Props) {
             </div>
             {setup("", e)}
           </section>
-          <ActionModal title="Tenant dan penugasan kasir" busy={busy} error={error}>
+          <section className="setting-section">
+            <div><h3>Tenant dan kasir</h3>
+              <p>{s.tenants.filter(t => t.enabled).length} tenant aktif · {s.tenants.filter(t => t.enabled && !admin.tenantStaff.some(a => a.tenant === t.name)).length} belum memiliki kasir</p>
+            </div>
+          <ActionModal title="Tenant dan kasir" trigger="Kelola tenant dan kasir" busy={busy} error={error}>
             <Form
               title="Tambah tenant"
               busy={busy}
@@ -151,7 +155,10 @@ export function Management({ s, run, busy, error }: Props) {
               </p>
             )}
           </ActionModal>
-          <ActionModal title="Bagi hasil developer" busy={busy} error={error}>
+          </section>
+          <section className="setting-section">
+            <div><h3>Bagi hasil</h3><p>Bagian Nyaris {admin.bps / 100}% dari penjualan bruto.</p></div>
+          <ActionModal title="Bagi hasil" trigger="Atur bagi hasil" busy={busy} error={error}>
             <Form
               title="Persentase Nyaris"
               busy={busy}
@@ -207,7 +214,10 @@ export function Management({ s, run, busy, error }: Props) {
                 </p>
               ))}
           </ActionModal>
-          <ActionModal title="Google Sheets" busy={busy} error={error}>
+          </section>
+          <section className="setting-section">
+            <div><h3>Google Sheets</h3><p>{s.sync.filter(j => j.file).length} dari {s.sync.length} tujuan laporan terhubung.</p></div>
+          <ActionModal title="Google Sheets" trigger="Kelola laporan" busy={busy} error={error}>
             <p>
               Siapkan dua file khusus event. Bagikan akses editor kepada service
               account. Akses kasir hanya pada file operasional.
@@ -238,6 +248,7 @@ export function Management({ s, run, busy, error }: Props) {
               </Form>
             ))}
           </ActionModal>
+          </section>
         </div>
       )}
       {e ? <ActionModal title="Buat event" trigger="+ Buat event" busy={busy} error={error}>{setup("", null)}</ActionModal>
@@ -296,7 +307,7 @@ export function History({ s, run, busy, error }: Props) {
         {filterFields}
         <button className="primary" onClick={() => { setShowFilters(false); setMenu(""); }}>Tampilkan transaksi</button>
       </Modal>
-      {Object.values(filter).some(Boolean) && <button onClick={() => { F({ tenant:"", cashier:"", method:"", status:"" }); setMenu(""); }}>Hapus filter</button>}
+      {Object.values(filter).some(Boolean) && <button className="clear-filter" onClick={() => { F({ tenant:"", cashier:"", method:"", status:"" }); setMenu(""); }}>Hapus filter</button>}
       {!rows.length && <p>{s.sales.length ? "Tidak ada transaksi yang cocok." : "Belum ada transaksi."}</p>}
       {rows.map((v) => {
         const identity =
@@ -305,7 +316,8 @@ export function History({ s, run, busy, error }: Props) {
           v.status === "paid" &&
           (s.admin || wib(v.created).slice(0, 10) === s.today);
         return (
-          <ActionModal key={v.id} title="Detail transaksi" busy={busy} error={error}
+          <div className="transaction-entry" key={v.id}>
+          <ActionModal title="Detail transaksi" busy={busy} error={error}
             className="transaction-row"
             trigger={<>
               <span className="transaction-info"><strong>{v.tenant}</strong>
@@ -414,6 +426,7 @@ export function History({ s, run, busy, error }: Props) {
                 </article>
               ))}
           </ActionModal>
+          </div>
         );
       })}
     </section>
