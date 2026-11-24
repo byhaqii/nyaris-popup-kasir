@@ -9,7 +9,7 @@ type Props = {
   busy: boolean;
   error?: string;
 };
-function Form({ title, children, submit, button = "Simpan", busy = false }) {
+function Form({ title, children, submit, button = "Simpan", busy = false, success = "Tersimpan." }) {
   const [saved, setSaved] = useState(false);
   return (
     <form
@@ -31,7 +31,7 @@ function Form({ title, children, submit, button = "Simpan", busy = false }) {
       {title && <h3>{title}</h3>}
       {children}
       <button className="primary" disabled={busy}>{busy ? "Menyimpan…" : button}</button>
-      {saved && <p role="status">Tersimpan.</p>}
+      {saved && <p role="status">{success}</p>}
     </form>
   );
 }
@@ -216,11 +216,12 @@ export function Management({ s, run, busy, error }: Props) {
           </ActionModal>
           </section>
           <section className="setting-section">
-            <div><h3>Google Sheets</h3><p>{s.sync.filter(j => j.file).length} dari {s.sync.length} tujuan laporan terhubung.</p></div>
+            <div><h3>Google Sheets</h3><p>{s.sync.filter(j => j.file).length} dari {s.sync.length} ID tujuan laporan tersimpan.</p></div>
           <ActionModal title="Google Sheets" trigger="Kelola laporan" busy={busy} error={error}>
             <p>
-              Siapkan dua file khusus event. Bagikan akses editor kepada service
-              account. Akses kasir hanya pada file operasional.
+              Simpan ID spreadsheet khusus untuk setiap laporan event. Sinkronisasi
+              memerlukan koneksi Google pada server. Periksa status sinkronisasi
+              dan waktu sinkron terakhir di bawah setiap tujuan.
             </p>
             {s.sync.map((j) => (
               <Form
@@ -231,7 +232,8 @@ export function Management({ s, run, busy, error }: Props) {
                     : "Laporan bagi hasil privat"
                 }
                 busy={busy || !!j.last}
-                button={j.last ? "Tujuan terikat" : "Hubungkan tujuan"}
+                button={j.last ? "Tujuan terikat" : "Simpan ID spreadsheet"}
+                success="ID spreadsheet tersimpan. Status koneksi dan sinkronisasi ditampilkan di atas."
                 submit={(p) =>
                   run({ ...p, action: "destination", kind: j.kind })
                 }
