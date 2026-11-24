@@ -15,6 +15,9 @@ process.env.POS_DATA_DIR = dir;
 const pwd = randomUUID(),
   env = { ...process.env, POS_OWNER_PASSWORD: pwd };
 execFileSync(process.execPath, ["scripts/owner.mjs", "owner"], { env });
+const legacy = open(dir);
+legacy.exec("DROP INDEX live_cashier_session; CREATE UNIQUE INDEX live_session ON sessions(eid) WHERE end IS NULL");
+legacy.close();
 const server = spawn(
   process.execPath,
   ["node_modules/next/dist/bin/next", "start", "-H", "127.0.0.1", "-p", "0"],
@@ -127,12 +130,13 @@ try {
       }),
     })),
   );
-  assert.deepEqual(starts.map((x) => x.r.status).sort(), [200, 409]);
+  assert.deepEqual(starts.map((x) => x.r.status).sort(), [200, 200]);
   const first = starts.find((x) => x.r.ok),
     cashier = first.name,
     other = cashier === "anna" ? "budi" : "anna";
   state = await first.r.json();
-  const sid = state.sessions[0].id;
+  const sid = state.sessions.find(session => session.cashier === cashier && !session.end).id;
+  await act(cashier, "start", {}, 409);
   const sale = {
     id: randomUUID(),
     sid,
@@ -314,6 +318,63 @@ try {
   )).json();
   assert.equal(otherEmployeeState.event.id, otherEvent.event.id);
   await act(other, "start", { eid: otherEvent.event.id }, 409);
+  const photoEvent = otherEvent.event.id;
+  await act("owner", "current", { eid: photoEvent });
+  await act("owner", "mode", { eid: photoEvent, mode: "on" });
+  await act("owner", "tenant", { eid: photoEvent, name: "Photo tenant", enabled: true });
+  const jpeg = Buffer.from(
+    "/9j/4AAQSkZJRgABAQAASABIAAD/wAARCAACAAIDASIAAhEBAxEB/8QAHwAAAQUBAQEBAQEAAAAA" +
+    "AAAAAAECAwQFBgcICQoL/8QAtRAAAgEDAwIEAwUFBAQAAAF9AQIDAAQRBRIhMUEGE1FhByJxFDKB" +
+    "kaEII0KxwRVS0fAkM2JyggkKFhcYGRolJicoKSo0NTY3ODk6Q0RFRkdISUpTVFVWV1hZWmNkZWZn" +
+    "aGlqc3R1dnd4eXqDhIWGh4iJipKTlJWWl5iZmqKjpKWmp6ipqrKztLW2t7i5usLDxMXGx8jJytLT" +
+    "1NXW19jZ2uHi4+Tl5ufo6erx8vP09fb3+Pn6/8QAHwEAAwEBAQEBAQEBAQAAAAAAAAECAwQFBgcI" +
+    "CQoL/8QAtREAAgECBAQDBAcFBAQAAQJ3AAECAxEEBSExBhJBUQdhcRMiMoEIFEKRobHBCSMzUvAV" +
+    "YnLRChYkNOEl8RcYGRomJygpKjU2Nzg5OkNERUZHSElKU1RVVldYWVpjZGVmZ2hpanN0dXZ3eHl6" +
+    "goOEhYaHiImKkpOUlZaXmJmaoqOkpaanqKmqsrO0tba3uLm6wsPExcbHyMnK0tPU1dbX2Nna4uPk" +
+    "5ebn6Onq8vP09fb3+Pn6/9sAQwACAgICAgIDAgIDBQMDAwUGBQUFBQYIBgYGBgYICggICAgICAoK" +
+    "CgoKCgoKDAwMDAwMDg4ODg4PDw8PDw8PDw8P/9sAQwECAgIEBAQHBAQHEAsJCxAQEBAQEBAQEBAQ" +
+    "EBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQ/90ABAAB/9oADAMBAAIRAxEA" +
+    "PwD9/KKKKAP/2Q==",
+    "base64",
+  );
+  async function uploadPhoto(who, bytes = jpeg, expected = 200) {
+    const form = new FormData();
+    form.set("event", String(photoEvent));
+    form.set("photo", new Blob([bytes], { type: "image/jpeg" }), "proof.jpg");
+    const response = await fetch(base + "/api/proofs", { method: "POST", headers: { cookie: users[who] || "" }, body: form });
+    const result = await response.json();
+    assert.equal(response.status, expected, JSON.stringify(result));
+    return result.id;
+  }
+  await uploadPhoto("", jpeg, 401);
+  await uploadPhoto(cashier, Buffer.from("invalid image"), 415);
+  await uploadPhoto(cashier, Buffer.alloc(600000), 413);
+  const photoA = await uploadPhoto(cashier);
+  const photoB = await uploadPhoto(other);
+  assert.equal((await fetch(base + "/api/proofs/" + photoA)).status, 401);
+  assert.equal((await fetch(base + "/api/proofs/" + photoA, { headers: { cookie: users[other] } })).status, 404);
+  await act(other, "sale", { eid: photoEvent, id: randomUUID(), tenant: "Photo tenant", amount: 1000, method: "Cash", proofId: photoA }, 400);
+  const simultaneous = [
+    { who: cashier, proofId: photoA, method: "QRIS" },
+    { who: other, proofId: photoB, method: "Cash" },
+  ].map(row => ({ ...row, id: randomUUID() }));
+  await Promise.all(simultaneous.map(row => act(row.who, "sale", { eid: photoEvent, id: row.id, tenant: "Photo tenant", amount: 1000, method: row.method, proofId: row.proofId })));
+  for (const row of simultaneous) {
+    const result = await act(row.who, "sale", { eid: photoEvent, id: row.id, tenant: "Photo tenant", amount: 1000, method: row.method, proofId: row.proofId });
+    const saved = result.sales.filter(sale => sale.id === row.id);
+    assert.equal(saved.length, 1);
+    assert.equal(saved[0].cashier, row.who);
+    assert.equal(saved[0].proofId, row.proofId);
+    const response = await fetch(base + "/api/proofs/" + row.proofId, { headers: { cookie: users[row.who] } });
+    assert.equal(response.status, 200);
+    assert.equal(response.headers.get("content-type"), "image/jpeg");
+    assert.deepEqual(Buffer.from(await response.arrayBuffer()), jpeg);
+  }
+  await act(cashier, "sale", { eid: photoEvent, id: randomUUID(), tenant: "Photo tenant", amount: 1000, method: "QRIS", proofId: photoA }, 400);
+  process.env.POS_PUBLIC_URL = base;
+  const photoReport = tables(records(db, photoEvent), "ops", 0);
+  assert.equal(photoReport.Transaksi[0].at(-1), "Bukti pembayaran");
+  assert(photoReport.Transaksi.slice(1).every(row => row.at(-1).startsWith(base + "/api/proofs/")));
   const token = users[other];
   await post("/api/auth", other, { action: "logout" });
   assert.equal(
@@ -354,7 +415,7 @@ try {
   });
   db.close();
   console.log(
-    "PASS: protected HTTP routes, roles, automatic employee event access, manual event controls, concurrent sessions, payments, retries, corrections, reports, logout, persistent sync retry and SQLite integrity.",
+    "PASS: protected HTTP routes, roles, automatic employee event access, manual event controls, concurrent sessions and payments, photo uploads, protected photo access, retries, corrections, reports, logout, persistent sync retry and SQLite integrity.",
   );
 } finally {
   const exited = once(server, "exit");

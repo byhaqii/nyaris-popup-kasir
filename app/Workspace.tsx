@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from "react";
 import { pendingPayment, receiptMessage, reservePayment, forgetPayment } from "../lib/payment.mjs";
 import FloatingNavbar from "../components/ui/smoothui/floating-navbar";
 import PasswordChange from "./PasswordChange";
+import ProofPicker from "./ProofPicker";
 import { Icon } from "./art";
 import { AccountManagement, Management, History, Reports } from "./Management";
 import { rupiah, type State } from "./model";
@@ -10,6 +11,8 @@ const tabs = ["Kasir", "Transaksi", "Ringkasan"];
 const accountsTab = "Account Management";
 const developerTabs = [...tabs, "Kelola", accountsTab];
 export default function Workspace({ initial }: { initial: State }) {
+  const [proofId, setProofId] = useState("");
+  const [proofBusy, setProofBusy] = useState(false);
   const [tab, T] = useState("Kasir"),
     [state, S] = useState<State>(initial),
     [tenant, A] = useState(""),
@@ -54,6 +57,7 @@ export default function Workspace({ initial }: { initial: State }) {
   const isDeveloper = !!state.admin;
   const event = state.event,
     tenants = state.tenants.filter((t) => t.enabled).map((t) => t.name);
+  useEffect(() => { setProofId(""); }, [event?.id]);
   useEffect(() => {
     let live = true;
     let inflight = false;
@@ -167,6 +171,7 @@ export default function Workspace({ initial }: { initial: State }) {
     }
   }
   function resetVoucher() {
+    setProofId("");
     A("");
     B("");
     M("QRIS");
@@ -220,7 +225,7 @@ export default function Workspace({ initial }: { initial: State }) {
       request =
         pending ||
             (await reservePayment(localStorage, pendingKey, {
-              tenant, amount: amt, method, ...confirmation.current,
+              tenant, amount: amt, method, ...(proofId ? { proofId } : {}), ...confirmation.current,
             }).then(result => { recovered = result.recovered; return result.request; }));
     } catch {
       E("Penyimpanan browser tidak tersedia. Pembayaran belum dikirim.");
@@ -455,6 +460,8 @@ export default function Workspace({ initial }: { initial: State }) {
                     </button>
                   ))}
                 </div>
+                <ProofPicker key={event?.id} eventId={event?.id} value={proofId} disabled={busy || !!pending}
+                  onChange={setProofId} onBusyChange={setProofBusy} />
               </fieldset>
               <section className="summary">
                 <p className="compact-voucher">
@@ -489,7 +496,7 @@ export default function Workspace({ initial }: { initial: State }) {
                 </p>
                 <button
                   className="primary"
-                  disabled={(!pending && !valid) || busy}
+                  disabled={(!pending && !valid) || busy || proofBusy}
                   onClick={() => {
                     if (!pending)
                       confirmation.current = { eid: event.id };
@@ -556,6 +563,7 @@ export default function Workspace({ initial }: { initial: State }) {
         <p id="confirmation-summary">
           {pending?.tenant || tenant} · {rupiah(pending?.amount || amt)} · {pending?.method || method}
         </p>
+        {(pending?.proofId || proofId) && <img className="proof-preview" src={"/api/proofs/" + (pending?.proofId || proofId)} alt="Foto bukti yang akan dilampirkan" width={240} height={160} />}
         <p>
           {pending && !missing
               ? "Periksa apakah voucher sudah tersimpan."

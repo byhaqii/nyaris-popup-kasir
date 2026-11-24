@@ -10,6 +10,7 @@ export type Sale = {
   status: string;
   version: number;
   cashier: string;
+  proofId?: string;
 };
 export type Session = {
   id: number;

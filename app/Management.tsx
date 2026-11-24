@@ -332,6 +332,9 @@ export function History({ s, run, busy, error }: Props) {
               {wib(v.created).replace("T", " ")} WIB · {v.cashier}
             </p>
             <small>ID {v.id}</small>
+            {v.proofId && <ActionModal title="Bukti pembayaran" trigger="Lihat bukti pembayaran">
+              <img className="proof-full" src={"/api/proofs/" + v.proofId} alt={"Bukti pembayaran " + v.tenant} width={1280} height={1280} />
+            </ActionModal>}
             {allowed && (
               <div className="transaction-actions" key={v.version}>
                 <ActionModal title="Edit transaksi" busy={busy} error={error}>
