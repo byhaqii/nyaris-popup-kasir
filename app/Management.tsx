@@ -2,33 +2,36 @@
 import { useRef, useState } from "react";
 import { grossSales } from "../lib/sales.mjs";
 import { rupiah, type State } from "./model";
+import { ActionModal, Modal } from "./Modal";
 type Props = {
   s: State;
   run: (data: Record<string, unknown>) => Promise<boolean>;
   busy: boolean;
+  error?: string;
 };
 function Form({ title, children, submit, button = "Simpan", busy = false }) {
+  const [saved, setSaved] = useState(false);
   return (
     <form
       className="editor"
       onSubmit={async (e) => {
         e.preventDefault();
+        setSaved(false);
         const form = e.currentTarget;
         const password = form.querySelector<HTMLInputElement>(
           'input[type="password"]',
         );
         const previous = password?.value;
-        if (
-          (await submit(Object.fromEntries(new FormData(form)))) &&
-          password &&
-          password.value === previous
-        )
-          password.value = "";
+        if (await submit(Object.fromEntries(new FormData(form)))) {
+          setSaved(true);
+          if (password && password.value === previous) password.value = "";
+        }
       }}
     >
       {title && <h3>{title}</h3>}
       {children}
-      <button disabled={busy}>{button}</button>
+      <button className="primary" disabled={busy}>{busy ? "Menyimpan…" : button}</button>
+      {saved && <p role="status">Tersimpan.</p>}
     </form>
   );
 }
@@ -55,8 +58,7 @@ function Field({
 }
 const wib = (s: string) =>
   s ? new Date(Date.parse(s) + 7 * 3600000).toISOString().slice(0, 16) : "";
-export function Management({ s, run, busy }: Props) {
-  const [creating, setCreating] = useState(false);
+export function Management({ s, run, busy, error }: Props) {
   const e = s.event,
     admin = s.admin;
   if (!admin) return null;
@@ -105,8 +107,7 @@ export function Management({ s, run, busy }: Props) {
             </div>
             {setup("", e)}
           </section>
-          <details>
-            <summary>Tenant dan penugasan kasir</summary>
+          <ActionModal title="Tenant dan penugasan kasir" busy={busy} error={error}>
             <Form
               title="Tambah tenant"
               busy={busy}
@@ -118,13 +119,13 @@ export function Management({ s, run, busy }: Props) {
               <article key={t.name}>
                 <div><strong>{t.name}</strong>
                   <small>{admin.tenantStaff.filter(a => a.tenant === t.name).map(a => admin.users.find(u => u.id === a.uid)?.name).join(", ") || "Belum ada kasir"}</small>
-                  <details><summary>Atur kasir tenant</summary>
+                  <ActionModal title={"Atur kasir · " + t.name} trigger="Atur kasir tenant" busy={busy} error={error}>
                     {admin.users.filter(u => u.enabled && u.role === "cashier").map(u => <label key={u.id}>
                       <input type="checkbox" disabled={busy} checked={admin.tenantStaff.some(a => a.tenant === t.name && a.uid === u.id)}
                         onChange={event => run({action:"tenantStaff", tenant:t.name, uid:u.id, enabled:event.target.checked})} /> {u.name}
                     </label>)}
                     {!admin.users.some(u => u.enabled && u.role === "cashier") && <p>Belum ada akun kasir aktif.</p>}
-                  </details>
+                  </ActionModal>
                 </div>
                 <button
                   disabled={busy}
@@ -149,9 +150,8 @@ export function Management({ s, run, busy }: Props) {
                 riwayat masing-masing sebelum menonaktifkan salah satunya.
               </p>
             )}
-          </details>
-          <details>
-            <summary>Bagi hasil developer</summary>
+          </ActionModal>
+          <ActionModal title="Bagi hasil developer" busy={busy} error={error}>
             <Form
               title="Persentase Nyaris"
               busy={busy}
@@ -206,9 +206,8 @@ export function Management({ s, run, busy }: Props) {
                   {JSON.parse(a.after).bps / 100}%
                 </p>
               ))}
-          </details>
-          <details>
-            <summary>Google Sheets</summary>
+          </ActionModal>
+          <ActionModal title="Google Sheets" busy={busy} error={error}>
             <p>
               Siapkan dua file khusus event. Bagikan akses editor kepada service
               account. Akses kasir hanya pada file operasional.
@@ -238,11 +237,11 @@ export function Management({ s, run, busy }: Props) {
                 </p>
               </Form>
             ))}
-          </details>
+          </ActionModal>
         </div>
       )}
-      {e && <button aria-expanded={creating} onClick={() => setCreating(!creating)}>{creating ? "Tutup form" : "+ Buat event"}</button>}
-      {(!e || creating) && <div className="panel stack">{setup("Buat event", null)}</div>}
+      {e ? <ActionModal title="Buat event" trigger="+ Buat event" busy={busy} error={error}>{setup("", null)}</ActionModal>
+        : <div className="panel stack">{setup("Buat event", null)}</div>}
     </section>
   );
 }
@@ -265,7 +264,7 @@ function FilterChoice({ label, values, value, onChange, open, setOpen }: {
     </div>}
   </div>;
 }
-export function History({ s, run, busy }: Props) {
+export function History({ s, run, busy, error }: Props) {
   const [menu, setMenu] = useState("");
   const [showFilters, setShowFilters] = useState(false);
   const [filter, F] = useState({
@@ -277,10 +276,7 @@ export function History({ s, run, busy }: Props) {
   const rows = s.sales.filter((v) =>
     Object.entries(filter).every(([k, w]) => !w || v[k] === w),
   );
-  return (
-    <section className="panel stack">
-      <button className="mobile-filter" aria-expanded={showFilters} onClick={() => { setShowFilters(!showFilters); setMenu(""); }}>Filter</button>
-      <div className="transaction-filters" data-visible={showFilters}>
+  const filterFields = <div className="transaction-filters">
         {Object.entries({
           tenant: s.tenants.map((t) => t.name),
           cashier: [...new Set(s.sessions.map((v) => v.cashier))],
@@ -291,7 +287,15 @@ export function History({ s, run, busy }: Props) {
             open={menu === k} setOpen={(open) => setMenu(current => open ? k : current === k ? "" : current)} values={values} value={filter[k]} onChange={(value) => F({ ...filter, [k]: value })} />
 
         ))}
-      </div>
+  </div>;
+  return (
+    <section className="panel stack transaction-list">
+      <button className="mobile-filter" aria-haspopup="dialog" onClick={() => { setShowFilters(true); setMenu(""); }}>Filter</button>
+      <div className="desktop-filters">{filterFields}</div>
+      <Modal title="Filter transaksi" open={showFilters} onClose={() => { setShowFilters(false); setMenu(""); }}>
+        {filterFields}
+        <button className="primary" onClick={() => { setShowFilters(false); setMenu(""); }}>Tampilkan transaksi</button>
+      </Modal>
       {Object.values(filter).some(Boolean) && <button onClick={() => { F({ tenant:"", cashier:"", method:"", status:"" }); setMenu(""); }}>Hapus filter</button>}
       {!rows.length && <p>{s.sales.length ? "Tidak ada transaksi yang cocok." : "Belum ada transaksi."}</p>}
       {rows.map((v) => {
@@ -301,20 +305,24 @@ export function History({ s, run, busy }: Props) {
           v.status === "paid" &&
           (s.admin || wib(v.created).slice(0, 10) === s.today);
         return (
-          <details key={v.id}>
-            <summary>
-              <strong>{rupiah(v.amount)} · {v.tenant}</strong> ·{" "}
-              {v.status === "paid" ? "Lunas" : "Dibatalkan"}
-              <small>{v.cashier} · {v.method} · {identity}</small>
-            </summary>
+          <ActionModal key={v.id} title="Detail transaksi" busy={busy} error={error}
+            className="transaction-row"
+            trigger={<>
+              <span className="transaction-info"><strong>{v.tenant}</strong>
+                <small>{v.cashier} · {v.method} · {identity}</small>
+              </span>
+              <span className="transaction-value"><strong>{rupiah(v.amount)}</strong>
+                <small className={v.status === "paid" ? "paid-status" : "cancelled-status"}>{v.status === "paid" ? "Lunas" : "Dibatalkan"}</small>
+              </span>
+            </>}>
+            <div className="transaction-detail-total"><strong>{v.tenant}</strong><strong>{rupiah(v.amount)}</strong></div>
             <p>
               {wib(v.created).replace("T", " ")} WIB · {v.cashier}
             </p>
             <small>ID {v.id}</small>
             {allowed && (
-              <div key={v.version}>
-                <details>
-                  <summary>Edit transaksi</summary>
+              <div className="transaction-actions" key={v.version}>
+                <ActionModal title="Edit transaksi" busy={busy} error={error}>
                   <Form
                     title="Koreksi pembayaran"
                     busy={busy}
@@ -354,9 +362,8 @@ export function History({ s, run, busy }: Props) {
                     </label>
                     <Field label="Alasan koreksi" name="reason" />
                   </Form>
-                </details>
-                <details>
-                  <summary>Batalkan transaksi</summary>
+                </ActionModal>
+                <ActionModal title="Batalkan transaksi" busy={busy} error={error}>
                   <Form
                     title={
                       v.tenant + " · " + rupiah(v.amount) + " · " + identity
@@ -375,7 +382,7 @@ export function History({ s, run, busy }: Props) {
                     <p>Pengembalian dana dilakukan manual.</p>
                     <Field label="Alasan pembatalan" name="reason" />
                   </Form>
-                </details>
+                </ActionModal>
               </div>
             )}
             <h3>Riwayat perubahan</h3>
@@ -406,7 +413,7 @@ export function History({ s, run, busy }: Props) {
                   </div>
                 </article>
               ))}
-          </details>
+          </ActionModal>
         );
       })}
     </section>
@@ -424,9 +431,9 @@ export function Reports({ s }: { s: State }) {
     );
   }
   return (
-    <section className="panel stack">
-      <h3>Penjualan bruto</h3>
-      <h2>{rupiah(grossSales(paid))}</h2><p>{paid.length} transaksi</p>
+    <section className="panel stack reports">
+      <div className="report-total"><h3>Penjualan bruto</h3>
+      <h2>{rupiah(grossSales(paid))}</h2><p>{paid.length} transaksi</p></div>
       {["QRIS", "Cash"].map((m) => (
         <article key={m}>
           {m} tercatat<b>{summary(paid.filter((v) => v.method === m))}</b>
@@ -434,8 +441,8 @@ export function Reports({ s }: { s: State }) {
       ))}
       <h3>Penjualan tenant</h3>
       {ranked.map(t => (
-        <article key={t.name}>
-          <span>{t.name}</span><meter aria-label={"Penjualan " + t.name} min={0} max={ranked[0].gross || 1} value={t.gross} />
+        <article className="tenant-sales" key={t.name}>
+          <span>{t.name}</span><span className="sales-bar" role="meter" aria-label={"Penjualan " + t.name} aria-valuemin={0} aria-valuemax={ranked[0].gross || 1} aria-valuenow={t.gross}><span style={{width: `${t.gross / (ranked[0].gross || 1) * 100}%`}} /></span>
           <b>{rupiah(t.gross)}</b>
         </article>
       ))}
@@ -462,7 +469,7 @@ export function Reports({ s }: { s: State }) {
   );
 }
 
-export function AccountManagement({ s, run, busy }: Props) {
+export function AccountManagement({ s, run, busy, error }: Props) {
   const admin = s.admin;
   const [editing, setEditing] = useState<number | null>(null);
   const [creating, setCreating] = useState(false);
@@ -471,10 +478,10 @@ export function AccountManagement({ s, run, busy }: Props) {
   return (
     <div className="account-management">
       <section className="panel stack">
-        <div className="account-heading"><h3>Daftar akun</h3><button className="primary" aria-expanded={creating} onClick={() => setCreating(!creating)}>{creating ? "Tutup form" : "+ Buat akun"}</button></div>
-        {creating && <section className="panel stack">
+        <div className="account-heading"><h3>Daftar akun</h3><button className="primary" aria-haspopup="dialog" onClick={() => setCreating(true)}>+ Buat akun</button></div>
+        <Modal title="Buat akun" open={creating} onClose={() => setCreating(false)} busy={busy} error={error}>
         <Form
-          title="Buat akun"
+          title=""
           busy={busy}
           submit={async (p) => { const ok = await run({ ...p, action: "account" }); if (ok) setCreating(false); return ok; }}
         >
@@ -493,19 +500,19 @@ export function AccountManagement({ s, run, busy }: Props) {
             autoComplete="new-password"
           />
         </Form>
-      </section>}
+      </Modal>
         <div className="scroll"><table className="report"><thead><tr>
           <th>Username</th><th>Role</th><th>Status</th><th>Aksi</th>
         </tr></thead><tbody>{admin.users.map(user => <tr key={user.id}>
           <th scope="row">{user.name}</th><td>{user.role === "cashier" ? "Kasir" : "Developer"}</td>
           <td>{user.enabled ? "Aktif" : "Nonaktif"}</td>
-          <td><button aria-label={`Edit akun ${user.name}`} aria-expanded={editing === user.id}
-            onClick={() => setEditing(editing === user.id ? null : user.id)}>{editing === user.id ? "Tutup" : "Edit"}</button></td>
+          <td><button aria-label={`Edit akun ${user.name}`} aria-haspopup="dialog"
+            onClick={() => setEditing(user.id)}>Edit</button></td>
         </tr>)}</tbody></table></div>
-        {u && (
-            <Form
+        <Modal title={u ? `Edit akun ${u.name}` : "Edit akun"} open={!!u} onClose={() => setEditing(null)} busy={busy} error={error}>
+          {u && <Form
               key={u.id}
-              title={`Edit akun ${u.name}`}
+              title=""
               busy={busy}
               submit={(p) =>
                 run({
@@ -537,8 +544,8 @@ export function AccountManagement({ s, run, busy }: Props) {
                 minLength={8}
                 required={false}
               />
-            </Form>
-        )}
+            </Form>}
+        </Modal>
       </section>
     </div>
   );

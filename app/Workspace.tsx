@@ -507,6 +507,7 @@ export default function Workspace({ initial }: { initial: State }) {
             </div>
           ) : tab === "Transaksi" ? (
             <History
+              error={err}
               key={event?.id}
               s={state}
               run={run}
@@ -515,9 +516,10 @@ export default function Workspace({ initial }: { initial: State }) {
           ) : tab === "Ringkasan" ? (
             <Reports s={state} />
           ) : tab === accountsTab && state.admin ? (
-            <AccountManagement s={state} run={run} busy={busy || !ready} />
+            <AccountManagement s={state} run={run} busy={busy || !ready} error={err} />
           ) : tab === "Kelola" && state.admin ? (
             <Management
+              error={err}
               key={event?.id}
               s={state}
               run={run}
