@@ -503,9 +503,9 @@ export function AccountManagement({ s, run, busy, error }: Props) {
         >
           <Field label="Username" name="name" />
           <fieldset className="role-field"><legend>Role</legend>
-            <div>{["cashier", "developer"].map((role) => <label key={role}>
+            <div>{["cashier", "ceo"].map((role) => <label key={role}>
               <input type="radio" name="role" value={role} defaultChecked={role === "cashier"} />
-              <span>{role === "cashier" ? "Kasir" : "Developer"}</span>
+              <span>{role === "cashier" ? "Kasir" : "CEO"}</span>
             </label>)}</div>
           </fieldset>
           <Field
@@ -520,7 +520,7 @@ export function AccountManagement({ s, run, busy, error }: Props) {
         <div className="scroll"><table className="report"><thead><tr>
           <th>Username</th><th>Role</th><th>Status</th><th>Aksi</th>
         </tr></thead><tbody>{admin.users.map(user => <tr key={user.id}>
-          <th scope="row">{user.name}</th><td>{user.role === "cashier" ? "Kasir" : "Developer"}</td>
+          <th scope="row">{user.name}</th><td>{user.role === "cashier" ? "Kasir" : "CEO"}</td>
           <td>{user.enabled ? "Aktif" : "Nonaktif"}</td>
           <td><button aria-label={`Edit akun ${user.name}`} aria-haspopup="dialog"
             onClick={() => setEditing(user.id)}>Edit</button></td>

@@ -9,7 +9,7 @@ import { AccountManagement, Management, History, Reports } from "./Management";
 import { rupiah, type State } from "./model";
 const tabs = ["Kasir", "Transaksi", "Ringkasan"];
 const accountsTab = "Account Management";
-const developerTabs = [...tabs, "Kelola", accountsTab];
+const ceoTabs = [...tabs, "Kelola", accountsTab];
 export default function Workspace({ initial }: { initial: State }) {
   const [proofId, setProofId] = useState("");
   const [proofBusy, setProofBusy] = useState(false);
@@ -54,7 +54,7 @@ export default function Workspace({ initial }: { initial: State }) {
   const [selected, select] = useState(0),
     [notice, N] = useState(""),
     generation = useRef(0);
-  const isDeveloper = !!state.admin;
+  const isCeo = !!state.admin;
   const event = state.event,
     tenants = state.tenants.filter((t) => t.enabled).map((t) => t.name);
   useEffect(() => { setProofId(""); }, [event?.id]);
@@ -248,7 +248,7 @@ export default function Workspace({ initial }: { initial: State }) {
     const apply = () => {
       const view = decodeURIComponent(location.hash.slice(1));
       T(
-        (isDeveloper ? developerTabs : tabs).includes(view)
+        (isCeo ? ceoTabs : tabs).includes(view)
           ? view
           : "Kasir",
       );
@@ -256,7 +256,7 @@ export default function Workspace({ initial }: { initial: State }) {
     apply();
     window.addEventListener("hashchange", apply);
     return () => window.removeEventListener("hashchange", apply);
-  }, [isDeveloper]);
+  }, [isCeo]);
   const nav = (t: string) => {
 
     location.hash = t;
@@ -283,7 +283,7 @@ export default function Workspace({ initial }: { initial: State }) {
     : !event.active
       ? "Event belum aktif atau sudah ditutup."
       : "";
-  const destinations = state.admin ? developerTabs : tabs;
+  const destinations = state.admin ? ceoTabs : tabs;
   const label = (name: string) => name === accountsTab ? "Akun" : name;
   return (
     <div className="shell">
@@ -309,7 +309,7 @@ export default function Workspace({ initial }: { initial: State }) {
           <h2 id="profile-title">Profil</h2>
           <button autoFocus aria-label="Tutup profil" onClick={() => profileDialog.current?.close()}>×</button>
         </div>
-        <div className="profile-identity"><b aria-hidden="true">{state.user.name.slice(0, 2).toUpperCase()}</b><div><strong>{state.user.name}</strong><small>{state.user.role === "developer" ? "Developer" : "Kasir"}</small></div></div>
+        <div className="profile-identity"><b aria-hidden="true">{state.user.name.slice(0, 2).toUpperCase()}</b><div><strong>{state.user.name}</strong><small>{state.user.role === "ceo" ? "CEO" : "Kasir"}</small></div></div>
         <PasswordChange />
         <button onClick={() => { profileDialog.current?.close(); void logout(); }}>Keluar</button>
       </dialog>

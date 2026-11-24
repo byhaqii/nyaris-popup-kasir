@@ -41,9 +41,10 @@ export async function POST(req: NextRequest) {
     const token = atomic(db, () => {
       const current = change ? user(db, req.cookies.get("pos")?.value) : null;
       check(!change || current, "Silakan masuk kembali.", 401);
-      const name = change
+      let name = change
         ? String(current.name).toLowerCase()
         : p.name.trim().toLowerCase();
+      if (name === "owner" && !db.prepare("SELECT 1 FROM users WHERE name='owner'").get() && db.prepare("SELECT 1 FROM users WHERE name='ceo' AND role='ceo'").get()) name = "ceo";
       db.prepare("DELETE FROM attempts WHERE until<=?").run(time);
       const attempts = db
         .prepare("SELECT n FROM attempts WHERE name=?")

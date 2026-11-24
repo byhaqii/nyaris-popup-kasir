@@ -14,8 +14,9 @@ const dir = mkdtempSync(join(tmpdir(), "nyaris-test-"));
 process.env.POS_DATA_DIR = dir;
 const pwd = randomUUID(),
   env = { ...process.env, POS_OWNER_PASSWORD: pwd };
-execFileSync(process.execPath, ["scripts/owner.mjs", "owner"], { env });
+execFileSync(process.execPath, ["scripts/owner.mjs", "ceo"], { env });
 const legacy = open(dir);
+legacy.exec("UPDATE users SET name='owner',role='developer' WHERE name='ceo'");
 legacy.exec("DROP INDEX live_cashier_session; CREATE UNIQUE INDEX live_session ON sessions(eid) WHERE end IS NULL");
 legacy.close();
 const server = spawn(
@@ -60,19 +61,23 @@ try {
   await post(
     "/api/auth",
     "",
-    { action: "login", name: "owner", password: "bad" },
+    { action: "login", name: "ceo", password: "bad" },
     401,
   );
-  await login("owner");
-  await act("owner", "account", { name: "short-test", password: "1234567" }, 400);
-  await act("owner", "account", { name: "eight-test", password: "12345678", role: "developer" });
-  const home = await fetch(base, { headers: { cookie: users.owner } });
+  await login("ceo");
+  await post("/api/auth", "", { action: "login", name: "owner", password: pwd });
+  const ceoState = await (await fetch(base + "/api/pos", { headers: { cookie: users.ceo } })).json();
+  assert.equal(ceoState.user.name, "ceo");
+  assert.equal(ceoState.user.role, "ceo");
+  await act("ceo", "account", { name: "short-test", password: "1234567" }, 400);
+  await act("ceo", "account", { name: "eight-test", password: "12345678", role: "developer" });
+  const home = await fetch(base, { headers: { cookie: users.ceo } });
   assert.equal(home.status, 200);
   assert.match(await home.text(), /Meja kasir/);
   for (const name of ["anna", "budi"])
-    await act("owner", "account", { name, password: pwd });
-  await act("owner", "account", { name: "invalid", role: "admin", password: pwd }, 400);
-  await act("owner", "account", { name: "rekan", role: "developer", password: pwd });
+    await act("ceo", "account", { name, password: pwd });
+  await act("ceo", "account", { name: "invalid", role: "admin", password: pwd }, 400);
+  await act("ceo", "account", { name: "rekan", role: "developer", password: pwd });
   await login("rekan");
   await login("anna");
   await act("anna", "account", { name: "forbidden", role: "developer", password: pwd }, 403);
@@ -91,16 +96,16 @@ try {
   assert.equal(employeeState.event.id, eid);
   assert(employeeState.events.some(event => event.id === eid));
   const anna = state.admin.users.find(user => user.name === "anna");
-  await act("owner", "tenantStaff", { uid: anna.id, tenant: "Tenant A", enabled: true });
-  await act("owner", "tenant", { name: "Tenant A", enabled: true });
-  state = await act("owner", "tenant", { name: "tenant a", enabled: true });
+  await act("ceo", "tenantStaff", { uid: anna.id, tenant: "Tenant A", enabled: true });
+  await act("ceo", "tenant", { name: "Tenant A", enabled: true });
+  state = await act("ceo", "tenant", { name: "tenant a", enabled: true });
   assert.deepEqual(
     state.tenants.map((t) => t.name),
     ["Tenant A", "Tenant B"],
   );
   await login("anna");
   await login("budi");
-  await act("owner", "staff", {
+  await act("ceo", "staff", {
     uid: state.admin.users.find((u) => u.name === "anna").id,
     email: "anna@example.invalid",
     enabled: true,
@@ -119,7 +124,7 @@ try {
   );
   await act("anna", "start", {}, 409);
   await act("anna", "mode", { mode: "on" }, 403);
-  await act("owner", "mode", { mode: "on" });
+  await act("ceo", "mode", { mode: "on" });
   const starts = await Promise.all(
     ["anna", "budi"].map(async (name) => ({
       name,
@@ -183,7 +188,7 @@ try {
   });
   await act(cashier, "end", { sid });
   await act(cashier, "sale", { ...sale, id: randomUUID() }, 409);
-  await act("owner", "mode", { mode: "off" });
+  await act("ceo", "mode", { mode: "off" });
   state = await act(other, "edit", {
     ...sale,
     method: "Cash",
@@ -218,7 +223,7 @@ try {
     ),
     /Jangan stempel/,
   );
-  state = await act("owner", "share", { bps: 1500 });
+  state = await act("ceo", "share", { bps: 1500 });
   assert.deepEqual(state.admin.sharing[0], {
     name: "Tenant A",
     gross: 1000000,
@@ -235,31 +240,33 @@ try {
     { id: sale.id, version: 2, reason: "Too late" },
     403,
   );
-  await act("owner", "edit", {
+  await act("ceo", "edit", {
     ...sale,
     version: 2,
     reason: "Historical correction",
   });
-  await act("owner", "destination", {
+  await act("anna", "destination", { file: "test_ops_file_id_only", kind: "ops" }, 403);
+  await act("anna", "destination", { file: "test_private_file_id_only", kind: "private" }, 403);
+  await act("ceo", "destination", {
     file: "test_ops_file_id_only",
     kind: "ops",
   });
   await act(
-    "owner",
+    "ceo",
     "destination",
     { file: "test_ops_file_id_only", kind: "private" },
     400,
   );
-  await act("owner", "destination", {
+  await act("ceo", "destination", {
     file: "test_private_file_id_only",
     kind: "private",
   });
-  await act("owner", "destination", {
+  await act("ceo", "destination", {
     file: "replacement_ops_file",
     kind: "ops",
   });
   await act(
-    "owner",
+    "ceo",
     "destination",
     { file: "test_ops_file_id_only", kind: "private" },
     400,
@@ -283,24 +290,24 @@ try {
     0,
   );
   await act(
-    "owner",
+    "ceo",
     "destination",
     { file: "new_destination_file", kind: "ops" },
     400,
   );
   assert.equal(day("2026-11-20T17:00:00Z"), "2026-11-21");
-  await act("owner", "rename", {name: "Acceptance"});
-  await act("owner", "mode", { mode: "auto" }, 400);
-  state = await act("owner", "mode", { mode: "on" });
+  await act("ceo", "rename", {name: "Acceptance"});
+  await act("ceo", "mode", { mode: "auto" }, 400);
+  state = await act("ceo", "mode", { mode: "on" });
   assert.equal(state.event.active, true);
-  await act("owner", "start");
-  state = await act("owner", "mode", { mode: "off" });
+  await act("ceo", "start");
+  state = await act("ceo", "mode", { mode: "off" });
   assert.equal(state.event.active, false);
   assert(state.sessions.every(session => session.end));
   const directSale = { id: randomUUID(), tenant: "Tenant A", amount: 1000, method: "Cash" };
-  await act("owner", "sale", directSale, 409);
-  await act("owner", "mode", { mode: "on" });
-  for (const who of ["owner", "rekan"]) {
+  await act("ceo", "sale", directSale, 409);
+  await act("ceo", "mode", { mode: "on" });
+  for (const who of ["ceo", "rekan"]) {
     const request = { ...directSale, id: randomUUID() };
     await act(who, "sale", request);
     const retried = await act(who, "sale", request);
@@ -308,8 +315,8 @@ try {
     assert.equal(matches.length, 1);
     assert.equal(matches[0].cashier, who);
   }
-  await act("owner", "mode", { mode: "off" });
-  const otherEvent = await act("owner", "event", {
+  await act("ceo", "mode", { mode: "off" });
+  const otherEvent = await act("ceo", "event", {
     name: "Other",
   });
   const otherEmployeeState = await (await fetch(
@@ -319,9 +326,9 @@ try {
   assert.equal(otherEmployeeState.event.id, otherEvent.event.id);
   await act(other, "start", { eid: otherEvent.event.id }, 409);
   const photoEvent = otherEvent.event.id;
-  await act("owner", "current", { eid: photoEvent });
-  await act("owner", "mode", { eid: photoEvent, mode: "on" });
-  await act("owner", "tenant", { eid: photoEvent, name: "Photo tenant", enabled: true });
+  await act("ceo", "current", { eid: photoEvent });
+  await act("ceo", "mode", { eid: photoEvent, mode: "on" });
+  await act("ceo", "tenant", { eid: photoEvent, name: "Photo tenant", enabled: true });
   const jpeg = Buffer.from(
     "/9j/4AAQSkZJRgABAQAASABIAAD/wAARCAACAAIDASIAAhEBAxEB/8QAHwAAAQUBAQEBAQEAAAAA" +
     "AAAAAAECAwQFBgcICQoL/8QAtRAAAgEDAwIEAwUFBAQAAAF9AQIDAAQRBRIhMUEGE1FhByJxFDKB" +
@@ -388,29 +395,29 @@ try {
   const replacement = randomUUID();
   await post(
     "/api/auth",
-    "owner",
+    "ceo",
     { action: "password", password: "incorrect", newPassword: replacement },
     401,
   );
-  await post("/api/auth", "owner", {
+  await post("/api/auth", "ceo", {
     action: "password",
     password: pwd,
     newPassword: replacement,
   });
   assert.equal(
-    (await fetch(base + "/api/pos", { headers: { cookie: users.owner } }))
+    (await fetch(base + "/api/pos", { headers: { cookie: users.ceo } }))
       .status,
     401,
   );
   await post(
     "/api/auth",
     "",
-    { action: "login", name: "owner", password: pwd },
+    { action: "login", name: "ceo", password: pwd },
     401,
   );
   await post("/api/auth", "", {
     action: "login",
-    name: "owner",
+    name: "ceo",
     password: replacement,
   });
   db.close();
